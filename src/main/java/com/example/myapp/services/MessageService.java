@@ -187,9 +187,10 @@ public class MessageService {
 
                     if (coiffeur == null || lastMessage == null) return null;
 
+                    // Dans getConversationsClient
                     return new ConversationResponse(
                             coiffeur.getId(),
-                            coiffeur.getName(),
+                            coiffeur.getUser().getName(), // ← via User
                             "COIFFEUR",
                             lastMessage.getContent(),
                             lastMessage.getCreatedAt()
@@ -221,7 +222,7 @@ public class MessageService {
 
                     return new ConversationResponse(
                             client.getId(),
-                            client.getName(),
+                            client.getUser().getName(), // ← via User
                             "CLIENT",
                             lastMessage.getContent(),
                             lastMessage.getCreatedAt()

@@ -9,6 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface ClientRepository extends JpaRepository<Client, UUID> {
-    // Trouver un client par son email
-    Optional<Client> findByEmail(String email);
+
 }

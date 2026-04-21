@@ -28,23 +28,23 @@ public class ClientService {
                         salon.getId(),
                         salon.getName(),
                         salon.getLocalisation(),
-                        salon.getLatitude(),  // ← ajouté
-                        salon.getLongitude()  // ← ajouté
+                        salon.getLatitude(),
+                        salon.getLongitude()
                 ))
                 .toList();
     }
-
 
     public ProfileResponse getClientProfile(UUID clientId) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
+        // ← Accès aux infos via User maintenant
         return new ProfileResponse(
                 client.getId(),
-                client.getName(),
-                client.getEmail(),
-                client.getProfilePicture(),
-                client.getRole()
+                client.getUser().getName(),
+                client.getUser().getEmail(),
+                client.getUser().getProfilePicture(),
+                client.getUser().getRole()
         );
     }
 
@@ -52,24 +52,25 @@ public class ClientService {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
+        // ← Modification via User maintenant
         if (request.name() != null) {
-            client.setName(request.name());
+            client.getUser().setName(request.name());
         }
 
         // Si une nouvelle photo est envoyée → upload vers Cloudinary
         if (file != null && !file.isEmpty()) {
             String url = cloudinaryService.uploadPhoto(file, "profils");
-            client.setProfilePicture(url);
+            client.getUser().setProfilePicture(url);
         }
 
         clientRepository.save(client);
 
         return new ProfileResponse(
                 client.getId(),
-                client.getName(),
-                client.getEmail(),
-                client.getProfilePicture(),
-                client.getRole()
+                client.getUser().getName(),
+                client.getUser().getEmail(),
+                client.getUser().getProfilePicture(),
+                client.getUser().getRole()
         );
     }
 
@@ -89,8 +90,8 @@ public class ClientService {
                 .stream()
                 .map(coiffeur -> new CoiffeurSalonResponse(
                         coiffeur.getId(),
-                        coiffeur.getName(),
-                        coiffeur.getProfilePicture(),
+                        coiffeur.getUser().getName(),          // ← via User
+                        coiffeur.getUser().getProfilePicture(), // ← via User
                         coiffeur.isAdmin()
                 ))
                 .toList();
@@ -140,12 +141,12 @@ public class ClientService {
 
         return new CoiffeurDetailResponse(
                 coiffeur.getId(),
-                coiffeur.getName(),
-                coiffeur.getEmail(),
-                coiffeur.getProfilePicture(),
+                coiffeur.getUser().getName(),          // ← via User
+                coiffeur.getUser().getEmail(),         // ← via User
+                coiffeur.getUser().getProfilePicture(), // ← via User
                 photos,
                 services,
-                salon  // ← ajoutez ça
+                salon
         );
     }
 }

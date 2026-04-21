@@ -88,11 +88,12 @@ public class ReservationService {
                 .map(com.example.myapp.entitys.Service::getName)
                 .collect(Collectors.joining(", "));
 
+        // Dans creerReservation — ligne de notification
         notificationService.envoyerNotification(
                 coiffeur.getId(),
                 "COIFFEUR",
                 "Nouvelle demande de réservation",
-                "Le client " + client.getName() + " veut réserver " +
+                "Le client " + client.getUser().getName() + " veut réserver " + // ← via User
                         nomsServices + " le " + dayOfWeek + " à " + heureDebut,
                 saved.getId(),
                 "RESERVATION"
@@ -196,6 +197,7 @@ public class ReservationService {
                 .toList();
     }
 
+    // Dans mapToResponse
     private ReservationResponse mapToResponse(Reservation reservation) {
         List<String> serviceNames = reservation.getServices()
                 .stream()
@@ -212,8 +214,8 @@ public class ReservationService {
                 reservation.getStatus(),
                 reservation.getStartTime(),
                 reservation.getEndTime(),
-                reservation.getClient().getName(),
-                reservation.getCoiffeur().getName(),
+                reservation.getClient().getUser().getName(),   // ← via User
+                reservation.getCoiffeur().getUser().getName(), // ← via User
                 serviceNames,
                 totalPrice
         );

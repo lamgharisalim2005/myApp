@@ -102,15 +102,15 @@ public class PaymentService {
             reservation.setStatus("CONFIRMED");
             reservationRepository.save(reservation);
 
-            // Notifier le coiffeur
+            // Dans confirmerPaiement — notification au coiffeur
             notificationService.envoyerNotification(
                     reservation.getCoiffeur().getId(),
                     "COIFFEUR",
                     "Paiement reçu",
-                    "Le client " + reservation.getClient().getName() +
+                    "Le client " + reservation.getClient().getUser().getName() + // ← via User
                             " a payé pour " + nomsServices,
-                    reservation.getId(),  // ← eventId
-                    "RESERVATION"         // ← eventType
+                    reservation.getId(),
+                    "RESERVATION"
             );
 
             // Notifier le client
