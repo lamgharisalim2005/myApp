@@ -9,6 +9,6 @@ public record WorkScheduleResponse(
         String dayOfWeek,
         LocalTime startTime,
         LocalTime endTime,
-        UUID coiffeurId
+        UUID coiffeurId    // ← nom coiffeurId mais valeur = userId
 ) {
 }

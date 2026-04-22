@@ -21,17 +21,16 @@ public class AuthController {
     public ResponseEntity<GlobalResponse<Map<String, String>>> loginWithGoogle(
             @RequestBody Map<String, String> request) {
 
-        String googleIdToken = request.get("id_token");
-        String role = request.get("role"); // "CLIENT" ou "COIFFEUR"
+        String googleIdToken = request.get("idToken");
+        String role = request.get("role");
 
         if (googleIdToken == null || role == null) {
             throw new RuntimeException("idToken et role sont obligatoires");
         }
 
-        // Appeler le service qui vérifie le token Google et génère un JWT
-        String jwt = googleOAuth2Service.authenticateWithGoogle(googleIdToken, role);
+        // Retourne JWT + userId + clientId/coiffeurId
+        Map<String, String> response = googleOAuth2Service.authenticateWithGoogle(googleIdToken, role);
 
-        // Retourner le JWT au frontend/app mobile
-        return ResponseEntity.ok(new GlobalResponse<>(Map.of("token", jwt)));
+        return ResponseEntity.ok(new GlobalResponse<>(response));
     }
 }

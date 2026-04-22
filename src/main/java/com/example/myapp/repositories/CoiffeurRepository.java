@@ -12,5 +12,7 @@ import java.util.UUID;
 public interface CoiffeurRepository extends JpaRepository<Coiffeur, UUID> {
     List<Coiffeur> findBySalonId(UUID salonId);
 
+    Optional<Coiffeur> findByUserId(UUID userId);
+
     Optional<Coiffeur> findBySalonIdAndIsAdminTrue(UUID salonId);
 }

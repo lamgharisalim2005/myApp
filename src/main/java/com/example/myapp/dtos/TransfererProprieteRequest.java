@@ -4,7 +4,6 @@ import java.util.UUID;
 
 // Pour transférer la propriété du salon
 public record TransfererProprieteRequest(
-        UUID adminId,       // l'admin actuel
-        UUID nouveauAdminId // le coiffeur qui devient admin
+        UUID nouveauAdminId    // ← frontend envoie userId mais on l'appelle nouveauAdminId
 ) {
 }

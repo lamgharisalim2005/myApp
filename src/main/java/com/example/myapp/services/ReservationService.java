@@ -23,9 +23,11 @@ public class ReservationService {
     private final WorkScheduleRepository workScheduleRepository;
     private final NotificationService notificationService;
 
-    public ReservationResponse creerReservation(CreateReservationRequest request) {
+    // ✅ creerReservation — utilise userId
+    public ReservationResponse creerReservation(CreateReservationRequest request, UUID userId) {
 
-        Client client = clientRepository.findById(request.clientId())
+        // Chercher le client par userId
+        Client client = clientRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
         Coiffeur coiffeur = coiffeurRepository.findById(request.coiffeurId())
@@ -88,12 +90,12 @@ public class ReservationService {
                 .map(com.example.myapp.entitys.Service::getName)
                 .collect(Collectors.joining(", "));
 
-        // Dans creerReservation — ligne de notification
+        // ✅ utilise getUser().getId() pour les notifications
         notificationService.envoyerNotification(
-                coiffeur.getId(),
+                coiffeur.getUser().getId(),
                 "COIFFEUR",
                 "Nouvelle demande de réservation",
-                "Le client " + client.getUser().getName() + " veut réserver " + // ← via User
+                "Le client " + client.getUser().getName() + " veut réserver " +
                         nomsServices + " le " + dayOfWeek + " à " + heureDebut,
                 saved.getId(),
                 "RESERVATION"
@@ -102,16 +104,20 @@ public class ReservationService {
         return mapToResponse(saved);
     }
 
-    public ReservationResponse traiterReservation(UUID reservationId, String decision, UUID coiffeurId) {
+    // ✅ traiterReservation — utilise userId
+    public ReservationResponse traiterReservation(UUID reservationId, String decision, UUID userId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
 
+        // Chercher le coiffeur par userId
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
         // Vérifier que la réservation appartient à ce coiffeur
-        if (!reservation.getCoiffeur().getId().equals(coiffeurId)) {
+        if (!reservation.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Cette réservation ne vous appartient pas");
         }
 
-        // reste du code...
         if (!reservation.getStatus().equals("PENDING")) {
             throw new RuntimeException("Cette réservation n'est plus en attente");
         }
@@ -129,8 +135,9 @@ public class ReservationService {
             reservation.setStatus("WAITING_PAYMENT");
             reservationRepository.save(reservation);
 
+            // ✅ utilise getUser().getId() pour les notifications
             notificationService.envoyerNotification(
-                    reservation.getClient().getId(),
+                    reservation.getClient().getUser().getId(),
                     "CLIENT",
                     "Réservation confirmée",
                     "Votre réservation pour " + nomsServices +
@@ -144,8 +151,9 @@ public class ReservationService {
             reservation.setStatus("CANCELLED");
             reservationRepository.save(reservation);
 
+            // ✅ utilise getUser().getId() pour les notifications
             notificationService.envoyerNotification(
-                    reservation.getClient().getId(),
+                    reservation.getClient().getUser().getId(),
                     "CLIENT",
                     "Réservation refusée",
                     "Votre réservation pour " + nomsServices +
@@ -158,6 +166,7 @@ public class ReservationService {
         return mapToResponse(reservation);
     }
 
+    // Scheduler — passe automatiquement à COMPLETED quand endTime est dépassé
     @Scheduled(fixedRate = 60000)
     public void completerReservations() {
         List<Reservation> reservations = reservationRepository
@@ -172,8 +181,9 @@ public class ReservationService {
                     .map(com.example.myapp.entitys.Service::getName)
                     .collect(Collectors.joining(", "));
 
+            // ✅ utilise getUser().getId() pour les notifications
             notificationService.envoyerNotification(
-                    reservation.getClient().getId(),
+                    reservation.getClient().getUser().getId(),
                     "CLIENT",
                     "Service terminé",
                     "Votre service " + nomsServices + " est terminé.",
@@ -183,21 +193,28 @@ public class ReservationService {
         });
     }
 
-    public List<ReservationResponse> getReservationsClient(UUID clientId) {
-        return reservationRepository.findByClientId(clientId)
+    // ✅ getReservationsClient — utilise userId
+    public List<ReservationResponse> getReservationsClient(UUID userId) {
+        Client client = clientRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé"));
+
+        return reservationRepository.findByClientId(client.getId())
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
-    public List<ReservationResponse> getReservationsCoiffeur(UUID coiffeurId) {
-        return reservationRepository.findByCoiffeurId(coiffeurId)
+    // ✅ getReservationsCoiffeur — utilise userId
+    public List<ReservationResponse> getReservationsCoiffeur(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        return reservationRepository.findByCoiffeurId(coiffeur.getId())
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
-    // Dans mapToResponse
     private ReservationResponse mapToResponse(Reservation reservation) {
         List<String> serviceNames = reservation.getServices()
                 .stream()
@@ -214,8 +231,8 @@ public class ReservationService {
                 reservation.getStatus(),
                 reservation.getStartTime(),
                 reservation.getEndTime(),
-                reservation.getClient().getUser().getName(),   // ← via User
-                reservation.getCoiffeur().getUser().getName(), // ← via User
+                reservation.getClient().getUser().getName(),
+                reservation.getCoiffeur().getUser().getName(),
                 serviceNames,
                 totalPrice
         );

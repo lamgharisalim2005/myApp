@@ -4,6 +4,7 @@ import com.example.myapp.dtos.*;
 import com.example.myapp.exceptions.GlobalResponse;
 import com.example.myapp.services.ClientService;
 import com.example.myapp.services.CoiffeurService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,48 +40,57 @@ public class CoiffeurController {
     }
 
     // COIFFEUR — Voir son profil
-    @GetMapping("/{coiffeurId}/profile")
+    // userId extrait automatiquement du JWT
+    @GetMapping("/profile")
     public ResponseEntity<GlobalResponse<ProfileResponse>> getCoiffeurProfile(
-            @PathVariable UUID coiffeurId) {
-        ProfileResponse profile = coiffeurService.getCoiffeurProfile(coiffeurId);
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId"); // ← extrait du JWT
+        ProfileResponse profile = coiffeurService.getCoiffeurProfile(userId);
         return ResponseEntity.ok(new GlobalResponse<>(profile));
     }
 
     // COIFFEUR — Modifier son profil
-    @PutMapping("/{coiffeurId}/profile")
+    // userId extrait automatiquement du JWT
+    @PutMapping("/profile")
     public ResponseEntity<GlobalResponse<ProfileResponse>> updateCoiffeurProfile(
-            @PathVariable UUID coiffeurId,
             @RequestParam(required = false) String name,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId"); // ← extrait du JWT
         UpdateCoiffeurRequest request = new UpdateCoiffeurRequest(name);
-        ProfileResponse profile = coiffeurService.updateCoiffeurProfile(coiffeurId, request, file);
+        ProfileResponse profile = coiffeurService.updateCoiffeurProfile(userId, request, file);
         return ResponseEntity.ok(new GlobalResponse<>(profile));
     }
 
     // COIFFEUR — Ajouter une photo → 201 Created
-    @PostMapping("/{coiffeurId}/photos")
+    // userId extrait automatiquement du JWT
+    @PostMapping("/photos")
     public ResponseEntity<GlobalResponse<PhotoResponse>> ajouterPhotoCoiffeur(
-            @PathVariable UUID coiffeurId,
-            @RequestParam("file") MultipartFile file) {
-        PhotoResponse photo = coiffeurService.ajouterPhotoCoiffeur(coiffeurId, file);
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId"); // ← extrait du JWT
+        PhotoResponse photo = coiffeurService.ajouterPhotoCoiffeur(userId, file);
         return ResponseEntity.status(HttpStatus.CREATED).body(new GlobalResponse<>(photo));
     }
 
     // COIFFEUR — Supprimer une photo → 204 No Content
-    @DeleteMapping("/{coiffeurId}/photos/{photoId}")
+    // userId extrait automatiquement du JWT
+    @DeleteMapping("/photos/{photoId}")
     public ResponseEntity<Void> supprimerPhotoCoiffeur(
-            @PathVariable UUID coiffeurId,
-            @PathVariable UUID photoId) {
-        coiffeurService.supprimerPhotoCoiffeur(photoId, coiffeurId);
+            @PathVariable UUID photoId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId"); // ← extrait du JWT
+        coiffeurService.supprimerPhotoCoiffeur(photoId, userId);
         return ResponseEntity.noContent().build();
     }
 
     // COIFFEUR — Quitter le salon
-    @PutMapping("/{coiffeurId}/quitter-salon")
+    // userId extrait automatiquement du JWT
+    @PutMapping("/quitter-salon")
     public ResponseEntity<GlobalResponse<String>> quitterSalon(
-            @PathVariable UUID coiffeurId) {
-        QuitterSalonRequest request = new QuitterSalonRequest(coiffeurId);
-        coiffeurService.quitterSalon(request);
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId"); // ← extrait du JWT
+        coiffeurService.quitterSalon(userId);
         return ResponseEntity.ok(new GlobalResponse<>("Vous avez quitté le salon avec succès"));
     }
 }

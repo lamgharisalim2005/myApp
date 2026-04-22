@@ -46,6 +46,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 filterChain.doFilter(request, response);
                 return;
             }
+            // Après validation du token
+            request.setAttribute("userId", jwtService.extractUserId(token));
+            request.setAttribute("role", jwtService.extractRole(token));
 
             // 5. Extraire les infos depuis le token
             String email = jwtService.extractEmail(token);

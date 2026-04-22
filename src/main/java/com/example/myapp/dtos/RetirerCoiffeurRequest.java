@@ -4,7 +4,6 @@ import java.util.UUID;
 
 // Pour faire sortir un coiffeur du salon
 public record RetirerCoiffeurRequest(
-        UUID adminId,
-        UUID coiffeurId
+        UUID coiffeurId    // ← frontend envoie userId mais on l'appelle coiffeurId
 ) {
 }

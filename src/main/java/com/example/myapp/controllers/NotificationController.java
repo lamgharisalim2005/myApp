@@ -3,6 +3,7 @@ package com.example.myapp.controllers;
 import com.example.myapp.dtos.NotificationResponse;
 import com.example.myapp.exceptions.GlobalResponse;
 import com.example.myapp.services.NotificationService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,26 +20,32 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     // CLIENT — Voir ses notifications
-    @GetMapping("/client/{userId}")
+    // userId extrait automatiquement du JWT
+    @GetMapping("/client")
     public ResponseEntity<GlobalResponse<List<NotificationResponse>>> getNotificationsClient(
-            @PathVariable UUID userId) {
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
         List<NotificationResponse> notifications = notificationService.getNotifications(userId, "CLIENT");
         return ResponseEntity.ok(new GlobalResponse<>(notifications));
     }
 
     // COIFFEUR — Voir ses notifications
-    @GetMapping("/coiffeur/{userId}")
+    // userId extrait automatiquement du JWT
+    @GetMapping("/coiffeur")
     public ResponseEntity<GlobalResponse<List<NotificationResponse>>> getNotificationsCoiffeur(
-            @PathVariable UUID userId) {
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
         List<NotificationResponse> notifications = notificationService.getNotifications(userId, "COIFFEUR");
         return ResponseEntity.ok(new GlobalResponse<>(notifications));
     }
 
     // CLIENT ET COIFFEUR — Marquer une notification comme lue
+    // userId extrait automatiquement du JWT
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<GlobalResponse<String>> marquerCommeLue(
             @PathVariable UUID notificationId,
-            @RequestParam UUID userId) {
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
         notificationService.marquerCommeLue(notificationId, userId);
         return ResponseEntity.ok(new GlobalResponse<>("Notification marquée comme lue"));
     }

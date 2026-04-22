@@ -2,6 +2,7 @@ package com.example.myapp.services;
 
 import com.example.myapp.dtos.PaymentIntentResponse;
 import com.example.myapp.dtos.PaymentRequest;
+import com.example.myapp.entitys.Client;
 import com.example.myapp.entitys.Payment;
 import com.example.myapp.entitys.Reservation;
 import com.example.myapp.repositories.ClientRepository;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,17 +26,17 @@ public class PaymentService {
     private final NotificationService notificationService;
     private final ClientRepository clientRepository;
 
-    public PaymentIntentResponse creerPaymentIntent(PaymentRequest request) {
+    public PaymentIntentResponse creerPaymentIntent(PaymentRequest request, UUID userId) {
 
-        // 1. Vérifier que le client existe
-        clientRepository.findById(request.clientId())
+        // 1. Chercher le client par userId
+        Client client = clientRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
         // 2. Vérifier que la réservation existe et est en WAITING_PAYMENT
         Reservation reservation = reservationRepository.findById(request.reservationId())
                 .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
 
-        // Vérifier que la réservation n'est pas dans le passé
+        // 3. Vérifier que la réservation n'est pas dans le passé
         if (reservation.getStartTime().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Vous ne pouvez pas payer une réservation passée");
         }
@@ -43,12 +45,12 @@ public class PaymentService {
             throw new RuntimeException("Cette réservation n'est pas en attente de paiement");
         }
 
-        // 3. Vérifier que la réservation appartient à ce client ← nouveau
-        if (!reservation.getClient().getId().equals(request.clientId())) {
+        // 4. Vérifier que la réservation appartient à ce client
+        if (!reservation.getClient().getId().equals(client.getId())) {
             throw new RuntimeException("Cette réservation ne vous appartient pas");
         }
 
-        // 4. Vérifier qu'il n'y a pas déjà un paiement
+        // 5. Vérifier qu'il n'y a pas déjà un paiement
         if (paymentRepository.findByReservationId(reservation.getId()).isPresent()) {
             throw new RuntimeException("Un paiement existe déjà pour cette réservation");
         }
@@ -102,41 +104,43 @@ public class PaymentService {
             reservation.setStatus("CONFIRMED");
             reservationRepository.save(reservation);
 
-            // Dans confirmerPaiement — notification au coiffeur
+            // ✅ Notifier le coiffeur
             notificationService.envoyerNotification(
-                    reservation.getCoiffeur().getId(),
+                    reservation.getCoiffeur().getUser().getId(), // ← via User
                     "COIFFEUR",
                     "Paiement reçu",
-                    "Le client " + reservation.getClient().getUser().getName() + // ← via User
+                    "Le client " + reservation.getClient().getUser().getName() +
                             " a payé pour " + nomsServices,
                     reservation.getId(),
                     "RESERVATION"
             );
 
-            // Notifier le client
+
+            // ✅ Notifier le client
             notificationService.envoyerNotification(
-                    reservation.getClient().getId(),
+                    reservation.getClient().getUser().getId(), // ← via User
                     "CLIENT",
                     "Paiement confirmé",
                     "Votre paiement pour " + nomsServices +
                             " a été confirmé avec succès",
-                    reservation.getId(),  // ← eventId
-                    "RESERVATION"         // ← eventType
+                    reservation.getId(),
+                    "RESERVATION"
             );
+
 
         } else {
             payment.setStatus("FAILED");
             paymentRepository.save(payment);
 
-            // Notifier le client
+            // ✅ Notifier le client en cas d'échec
             notificationService.envoyerNotification(
-                    reservation.getClient().getId(),
+                    reservation.getClient().getUser().getId(), // ← via User
                     "CLIENT",
                     "Paiement échoué",
                     "Votre paiement pour " + nomsServices +
                             " a échoué. Veuillez réessayer.",
-                    reservation.getId(),  // ← eventId
-                    "PAYMENT"             // ← eventType
+                    reservation.getId(),
+                    "PAYMENT"
             );
         }
     }

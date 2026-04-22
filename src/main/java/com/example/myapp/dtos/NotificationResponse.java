@@ -13,8 +13,8 @@ public record NotificationResponse(
         LocalDateTime createdAt,
         UUID userId,
         String userType,
-        UUID eventId,      // ← nouveau
-        String eventType   // ← nouveau
+        UUID eventId,
+        String eventType
 ) {
 }
 

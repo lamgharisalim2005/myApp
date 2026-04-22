@@ -17,6 +17,10 @@ public class Client {
     private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", nullable = false, unique = true,
+            foreignKey = @ForeignKey(
+                    name = "fk_client_user",
+                    options = "ON DELETE CASCADE"  // ← CASCADE
+            ))
     private User user;
 }

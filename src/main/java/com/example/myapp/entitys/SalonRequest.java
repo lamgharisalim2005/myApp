@@ -17,7 +17,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Table(name = "SalonRequest")
+@Table(name = "salon_request", uniqueConstraints = {
+        // Un coiffeur ne peut pas envoyer 2 demandes PENDING au même salon
+        @UniqueConstraint(columnNames = {"coiffeur_id", "salon_id", "status"})
+})
 public class SalonRequest {
     @Id
     @GeneratedValue(generator = "UUID")
@@ -29,11 +32,11 @@ public class SalonRequest {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @ManyToOne(fetch = FetchType.LAZY , optional = false)
-    @JoinColumn(name = "coiffeurId" , nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "coiffeurId", nullable = false)
     private Coiffeur coiffeur;
 
-    @ManyToOne(fetch = FetchType.LAZY , optional = false)
-    @JoinColumn(name = "salonId" , nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "salonId", nullable = false)
     private Salon salon;
 }

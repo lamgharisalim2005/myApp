@@ -21,6 +21,7 @@ public class ClientService {
     private final SalonPhotoRepository salonPhotoRepository;
     private final CoiffeurPhotoRepository coiffeurPhotoRepository;
 
+    // PUBLIC — Voir tous les salons
     public List<SalonResponse> getAllSalons() {
         return salonRepository.findAll()
                 .stream()
@@ -34,13 +35,13 @@ public class ClientService {
                 .toList();
     }
 
-    public ProfileResponse getClientProfile(UUID clientId) {
-        Client client = clientRepository.findById(clientId)
+    // CLIENT — Voir son profil
+    public ProfileResponse getClientProfile(UUID userId) {
+        Client client = clientRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
-        // ← Accès aux infos via User maintenant
         return new ProfileResponse(
-                client.getId(),
+                client.getUser().getId(),           // ← userId
                 client.getUser().getName(),
                 client.getUser().getEmail(),
                 client.getUser().getProfilePicture(),
@@ -48,11 +49,11 @@ public class ClientService {
         );
     }
 
-    public ProfileResponse updateClientProfile(UUID clientId, UpdateClientRequest request, MultipartFile file) {
-        Client client = clientRepository.findById(clientId)
+    // CLIENT — Modifier son profil
+    public ProfileResponse updateClientProfile(UUID userId, UpdateClientRequest request, MultipartFile file) {
+        Client client = clientRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
-        // ← Modification via User maintenant
         if (request.name() != null) {
             client.getUser().setName(request.name());
         }
@@ -66,7 +67,7 @@ public class ClientService {
         clientRepository.save(client);
 
         return new ProfileResponse(
-                client.getId(),
+                client.getUser().getId(),           // ← userId
                 client.getUser().getName(),
                 client.getUser().getEmail(),
                 client.getUser().getProfilePicture(),
@@ -74,24 +75,22 @@ public class ClientService {
         );
     }
 
+    // PUBLIC — Voir les détails d'un salon
     public SalonDetailResponse getSalonDetail(UUID salonId) {
-        // 1. Vérifier que le salon existe
         Salon salon = salonRepository.findById(salonId)
                 .orElseThrow(() -> new RuntimeException("Salon non trouvé"));
 
-        // 2. Récupérer les photos du salon
         List<String> photos = salonPhotoRepository.findBySalonId(salonId)
                 .stream()
                 .map(SalonPhoto::getUrl)
                 .toList();
 
-        // 3. Récupérer les coiffeurs du salon
         List<CoiffeurSalonResponse> coiffeurs = coiffeurRepository.findBySalonId(salonId)
                 .stream()
                 .map(coiffeur -> new CoiffeurSalonResponse(
-                        coiffeur.getId(),
-                        coiffeur.getUser().getName(),          // ← via User
-                        coiffeur.getUser().getProfilePicture(), // ← via User
+                        coiffeur.getUser().getId(),  // ← userId comme valeur de coiffeurId
+                        coiffeur.getUser().getName(),
+                        coiffeur.getUser().getProfilePicture(),
                         coiffeur.isAdmin()
                 ))
                 .toList();
@@ -107,16 +106,17 @@ public class ClientService {
         );
     }
 
-    public CoiffeurDetailResponse getCoiffeurDetail(UUID coiffeurId) {
-        Coiffeur coiffeur = coiffeurRepository.findById(coiffeurId)
+    public CoiffeurDetailResponse getCoiffeurDetail(UUID userId) {
+        // ✅ Chercher par userId au lieu de coiffeurId
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        List<String> photos = coiffeurPhotoRepository.findByCoiffeurId(coiffeurId)
+        List<String> photos = coiffeurPhotoRepository.findByCoiffeurId(coiffeur.getId())
                 .stream()
                 .map(CoiffeurPhoto::getUrl)
                 .toList();
 
-        List<ServiceResponse> services = serviceRepository.findByCoiffeurId(coiffeurId)
+        List<ServiceResponse> services = serviceRepository.findByCoiffeurId(coiffeur.getId())
                 .stream()
                 .map(service -> new ServiceResponse(
                         service.getId(),
@@ -127,7 +127,6 @@ public class ClientService {
                 ))
                 .toList();
 
-        // Récupérer le salon du coiffeur s'il existe
         SalonResponse salon = null;
         if (coiffeur.getSalon() != null) {
             salon = new SalonResponse(
@@ -140,10 +139,10 @@ public class ClientService {
         }
 
         return new CoiffeurDetailResponse(
-                coiffeur.getId(),
-                coiffeur.getUser().getName(),          // ← via User
-                coiffeur.getUser().getEmail(),         // ← via User
-                coiffeur.getUser().getProfilePicture(), // ← via User
+                coiffeur.getUser().getId(),
+                coiffeur.getUser().getName(),
+                coiffeur.getUser().getEmail(),
+                coiffeur.getUser().getProfilePicture(),
                 photos,
                 services,
                 salon

@@ -3,7 +3,7 @@ package com.example.myapp.dtos;
 import java.util.UUID;
 
 public record ProfileResponse(
-        UUID id,
+        UUID userId,        // ← userId pour les deux client et coiffeur
         String name,
         String email,
         String profilePicture,

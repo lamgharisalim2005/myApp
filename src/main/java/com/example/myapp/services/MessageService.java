@@ -22,13 +22,12 @@ import java.util.UUID;
 public class MessageService {
 
     private final MessageRepository messageRepository;
-    // SimpMessagingTemplate pour envoyer les messages en temps réel via WebSocket
     private final SimpMessagingTemplate messagingTemplate;
     private final CoiffeurRepository coiffeurRepository;
     private final ClientRepository clientRepository;
 
-    // Envoyer un message
-    public MessageResponse envoyerMessage(SendMessageRequest request) {
+    // ✅ Envoyer un message — userId extrait du JWT
+    public MessageResponse envoyerMessage(SendMessageRequest request, UUID userId) {
 
         // 1. Vérifier que l'expéditeur existe
         if (request.senderType().equals("CLIENT")) {
@@ -100,20 +99,15 @@ public class MessageService {
         return response;
     }
 
-    // Voir une conversation
-    public List<MessageResponse> getConversation(UUID user1, UUID user2, UUID currentUserId) {
+    // ✅ Voir une conversation — userId extrait du JWT
+    public List<MessageResponse> getConversation(UUID userId, UUID otherUserId) {
 
-        // 1. Vérifier que currentUserId est bien user1 ou user2
-        if (!currentUserId.equals(user1) && !currentUserId.equals(user2)) {
-            throw new RuntimeException("Vous n'êtes pas autorisé à voir cette conversation");
-        }
-
-        // 2. Vérifier que user1 et user2 sont différents
-        if (user1.equals(user2)) {
+        // Vérifier que les deux utilisateurs sont différents
+        if (userId.equals(otherUserId)) {
             throw new RuntimeException("Vous ne pouvez pas avoir une conversation avec vous-même");
         }
 
-        return messageRepository.findConversation(user1, user2)
+        return messageRepository.findConversation(userId, otherUserId)
                 .stream()
                 .map(message -> new MessageResponse(
                         message.getId(),
@@ -124,12 +118,12 @@ public class MessageService {
                         message.getContent(),
                         message.getCreatedAt(),
                         message.getStatus(),
-                        message.getSenderId().equals(currentUserId) // ← isMe
+                        message.getSenderId().equals(userId) // ← isMe
                 ))
                 .toList();
     }
 
-    // Marquer un message comme lu
+    // ✅ Marquer un message comme lu — userId extrait du JWT
     public void marquerCommeLu(UUID messageId, UUID userId) {
 
         // 1. Vérifier que le message existe
@@ -167,63 +161,37 @@ public class MessageService {
         );
     }
 
-    // Voir les conversations d'un client
-    public List<ConversationResponse> getConversationsClient(UUID clientId) {
-
-        // 1. Vérifier que le client existe
-        clientRepository.findById(clientId)
-                .orElseThrow(() -> new RuntimeException("Client non trouvé"));
-
-        List<UUID> partnerIds = messageRepository.findConversationPartners(clientId);
+    // ✅ Voir toutes les conversations — unifié pour CLIENT et COIFFEUR
+    public List<ConversationResponse> getConversations(UUID userId, String role) {
+        List<UUID> partnerIds = messageRepository.findConversationPartners(userId);
 
         return partnerIds.stream()
                 .map(partnerId -> {
                     Message lastMessage = messageRepository
-                            .findLastMessage(clientId, partnerId)
+                            .findLastMessage(userId, partnerId)
                             .orElse(null);
 
-                    Coiffeur coiffeur = coiffeurRepository.findById(partnerId)
-                            .orElse(null);
+                    if (lastMessage == null) return null;
 
-                    if (coiffeur == null || lastMessage == null) return null;
+                    String partnerName = "Inconnu";
+                    String partnerType;
 
-                    // Dans getConversationsClient
-                    return new ConversationResponse(
-                            coiffeur.getId(),
-                            coiffeur.getUser().getName(), // ← via User
-                            "COIFFEUR",
-                            lastMessage.getContent(),
-                            lastMessage.getCreatedAt()
-                    );
-                })
-                .filter(c -> c != null)
-                .toList();
-    }
-
-    // Voir les conversations d'un coiffeur
-    public List<ConversationResponse> getConversationsCoiffeur(UUID coiffeurId) {
-
-        // 1. Vérifier que le coiffeur existe
-        coiffeurRepository.findById(coiffeurId)
-                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
-
-        List<UUID> partnerIds = messageRepository.findConversationPartners(coiffeurId);
-
-        return partnerIds.stream()
-                .map(partnerId -> {
-                    Message lastMessage = messageRepository
-                            .findLastMessage(coiffeurId, partnerId)
-                            .orElse(null);
-
-                    Client client = clientRepository.findById(partnerId)
-                            .orElse(null);
-
-                    if (client == null || lastMessage == null) return null;
+                    if (role.equals("CLIENT")) {
+                        // Client parle avec des coiffeurs
+                        Coiffeur coiffeur = coiffeurRepository.findById(partnerId).orElse(null);
+                        if (coiffeur != null) partnerName = coiffeur.getUser().getName();
+                        partnerType = "COIFFEUR";
+                    } else {
+                        // Coiffeur parle avec des clients
+                        Client client = clientRepository.findById(partnerId).orElse(null);
+                        if (client != null) partnerName = client.getUser().getName();
+                        partnerType = "CLIENT";
+                    }
 
                     return new ConversationResponse(
-                            client.getId(),
-                            client.getUser().getName(), // ← via User
-                            "CLIENT",
+                            partnerId,
+                            partnerName,
+                            partnerType,
                             lastMessage.getContent(),
                             lastMessage.getCreatedAt()
                     );

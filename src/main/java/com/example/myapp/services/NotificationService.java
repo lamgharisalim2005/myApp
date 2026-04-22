@@ -5,6 +5,7 @@ import com.example.myapp.entitys.Notification;
 import com.example.myapp.repositories.ClientRepository;
 import com.example.myapp.repositories.CoiffeurRepository;
 import com.example.myapp.repositories.NotificationRepository;
+import com.example.myapp.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -19,8 +20,7 @@ public class NotificationService {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationRepository notificationRepository;
-    private final ClientRepository clientRepository;
-    private final CoiffeurRepository coiffeurRepository;
+    private final UserRepository userRepository;
 
     public void envoyerNotification(UUID userId, String userType, String title,
                                     String message, UUID eventId, String eventType) {
@@ -72,14 +72,9 @@ public class NotificationService {
     // Récupérer toutes les notifications d'un utilisateur
     public List<NotificationResponse> getNotifications(UUID userId, String userType) {
 
-        // Vérifier que l'utilisateur existe selon son type
-        if (userType.equals("CLIENT")) {
-            clientRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Client non trouvé"));
-        } else if (userType.equals("COIFFEUR")) {
-            coiffeurRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
-        }
+        // Vérifier que l'utilisateur existe dans la table users
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
         return notificationRepository.findByUserIdAndUserType(userId, userType)
                 .stream()

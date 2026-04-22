@@ -5,7 +5,6 @@ import java.util.UUID;
 
 public record PaymentRequest(
         UUID reservationId,
-        UUID clientId,      // ← ajoutez ça
         String currency
 ) {
 }

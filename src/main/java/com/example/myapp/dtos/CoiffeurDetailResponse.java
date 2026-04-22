@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.UUID;
 
 public record CoiffeurDetailResponse(
-        UUID id,
+        UUID coiffeurId,    // ← nom coiffeurId mais valeur = userId
         String name,
         String email,
         String profilePicture,
         List<String> photos,
         List<ServiceResponse> services,
-        SalonResponse salon  // ← ajoutez ça (null si pas de salon)
+        SalonResponse salon
 ) {
 }

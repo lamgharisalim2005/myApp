@@ -24,8 +24,9 @@ public class CoiffeurService {
     private final CoiffeurPhotoRepository coiffeurPhotoRepository;
     private final SalonPhotoRepository salonPhotoRepository;
 
-    public SalonResponse creerSalon(CreateSalonRequest createSalonRequest) {
-        Coiffeur coiffeur = coiffeurRepository.findById(createSalonRequest.coiffeurId())
+    // COIFFEUR — Créer un salon
+    public SalonResponse creerSalon(CreateSalonRequest createSalonRequest, UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (coiffeur.getSalon() != null) {
@@ -58,8 +59,9 @@ public class CoiffeurService {
         );
     }
 
-    public SalonRequestResponse envoyerDemande(JoinSalonRequest request) {
-        Coiffeur coiffeur = coiffeurRepository.findById(request.coiffeurId())
+    // COIFFEUR — Envoyer une demande pour rejoindre un salon
+    public SalonRequestResponse envoyerDemande(JoinSalonRequest request, UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (coiffeur.isAdmin()) {
@@ -67,7 +69,7 @@ public class CoiffeurService {
         }
 
         if (salonRequestRepository.existsByCoiffeurIdAndSalonIdAndStatus(
-                request.coiffeurId(), request.salonId(), "PENDING")) {
+                coiffeur.getId(), request.salonId(), "PENDING")) {
             throw new RuntimeException("Vous avez déjà une demande en cours pour ce salon");
         }
 
@@ -85,10 +87,10 @@ public class CoiffeurService {
                 .orElseThrow(() -> new RuntimeException("Admin du salon non trouvé"));
 
         notificationService.envoyerNotification(
-                admin.getId(),
+                admin.getUser().getId(),           // ← userId
                 "COIFFEUR",
                 "Nouvelle demande",
-                "Le coiffeur " + coiffeur.getUser().getName() + " veut rejoindre votre salon", // ← via User
+                "Le coiffeur " + coiffeur.getUser().getName() + " veut rejoindre votre salon",
                 saved.getId(),
                 "SALON_REQUEST"
         );
@@ -96,13 +98,14 @@ public class CoiffeurService {
         return new SalonRequestResponse(
                 saved.getId(),
                 saved.getStatus(),
-                coiffeur.getUser().getName(), // ← via User
+                coiffeur.getUser().getName(),
                 salon.getName()
         );
     }
 
-    public List<SalonRequestResponse> getDemandesBySalon(UUID salonId, UUID adminId) {
-        Coiffeur admin = coiffeurRepository.findById(adminId)
+    // ADMIN — Voir les demandes reçues par son salon
+    public List<SalonRequestResponse> getDemandesBySalon(UUID salonId, UUID userId) {
+        Coiffeur admin = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!admin.isAdmin()) {
@@ -118,17 +121,18 @@ public class CoiffeurService {
                 .map(demande -> new SalonRequestResponse(
                         demande.getId(),
                         demande.getStatus(),
-                        demande.getCoiffeur().getUser().getName(), // ← via User
+                        demande.getCoiffeur().getUser().getName(),
                         demande.getSalon().getName()
                 ))
                 .toList();
     }
 
-    public SalonRequestResponse traiterDemande(UUID demandeId, String status, UUID adminId) {
+    // ADMIN — Accepter ou refuser une demande
+    public SalonRequestResponse traiterDemande(UUID demandeId, String status, UUID userId) {
         SalonRequest demande = salonRequestRepository.findById(demandeId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
-        Coiffeur admin = coiffeurRepository.findById(adminId)
+        Coiffeur admin = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!admin.isAdmin()) {
@@ -162,7 +166,7 @@ public class CoiffeurService {
             coiffeurRepository.save(coiffeur);
 
             notificationService.envoyerNotification(
-                    coiffeur.getId(),
+                    coiffeur.getUser().getId(),        // ← userId
                     "COIFFEUR",
                     "Demande acceptée",
                     "Votre demande pour rejoindre le salon " +
@@ -174,7 +178,7 @@ public class CoiffeurService {
 
         if (status.equals("REJECTED")) {
             notificationService.envoyerNotification(
-                    demande.getCoiffeur().getId(),
+                    demande.getCoiffeur().getUser().getId(), // ← userId
                     "COIFFEUR",
                     "Demande refusée",
                     "Votre demande pour rejoindre le salon " +
@@ -187,13 +191,14 @@ public class CoiffeurService {
         return new SalonRequestResponse(
                 demande.getId(),
                 demande.getStatus(),
-                demande.getCoiffeur().getUser().getName(), // ← via User
+                demande.getCoiffeur().getUser().getName(),
                 demande.getSalon().getName()
         );
     }
 
-    public ServiceResponse creerService(CreateServiceRequest request) {
-        Coiffeur coiffeur = coiffeurRepository.findById(request.coiffeurId())
+    // COIFFEUR — Créer un service
+    public ServiceResponse creerService(CreateServiceRequest request, UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         com.example.myapp.entitys.Service service = new com.example.myapp.entitys.Service();
@@ -213,11 +218,15 @@ public class CoiffeurService {
         );
     }
 
-    public ServiceResponse modifierService(UUID id, UpdateServiceRequest request, UUID coiffeurId) {
+    // COIFFEUR — Modifier un service
+    public ServiceResponse modifierService(UUID id, UpdateServiceRequest request, UUID userId) {
         com.example.myapp.entitys.Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service non trouvé"));
 
-        if (!service.getCoiffeur().getId().equals(coiffeurId)) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (!service.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Ce service ne vous appartient pas");
         }
 
@@ -236,23 +245,28 @@ public class CoiffeurService {
         );
     }
 
-    public void supprimerService(UUID id, UUID coiffeurId) {
+    // COIFFEUR — Supprimer un service
+    public void supprimerService(UUID id, UUID userId) {
         com.example.myapp.entitys.Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service non trouvé"));
 
-        if (!service.getCoiffeur().getId().equals(coiffeurId)) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (!service.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Ce service ne vous appartient pas");
         }
 
         serviceRepository.delete(service);
     }
 
-    public WorkScheduleResponse creerWorkSchedule(CreateWorkScheduleRequest request) {
-        Coiffeur coiffeur = coiffeurRepository.findById(request.coiffeurId())
+    // COIFFEUR — Créer un horaire
+    public WorkScheduleResponse creerWorkSchedule(CreateWorkScheduleRequest request, UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         List<WorkSchedule> existants = workScheduleRepository
-                .findByCoiffeurIdAndDayOfWeek(request.coiffeurId(), request.dayOfWeek());
+                .findByCoiffeurIdAndDayOfWeek(coiffeur.getId(), request.dayOfWeek());
 
         for (WorkSchedule ws : existants) {
             if (request.startTime().isBefore(ws.getEndTime()) &&
@@ -273,20 +287,24 @@ public class CoiffeurService {
                 saved.getDayOfWeek(),
                 saved.getStartTime(),
                 saved.getEndTime(),
-                coiffeur.getId()
+                coiffeur.getUser().getId()  // ← userId
         );
     }
 
-    public WorkScheduleResponse modifierWorkSchedule(UUID id, UpdateWorkScheduleRequest request, UUID coiffeurId) {
+    // COIFFEUR — Modifier un horaire
+    public WorkScheduleResponse modifierWorkSchedule(UUID id, UpdateWorkScheduleRequest request, UUID userId) {
         WorkSchedule workSchedule = workScheduleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("WorkSchedule non trouvé"));
 
-        if (!workSchedule.getCoiffeur().getId().equals(coiffeurId)) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (!workSchedule.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Ce WorkSchedule ne vous appartient pas");
         }
 
         List<WorkSchedule> existants = workScheduleRepository
-                .findByCoiffeurIdAndDayOfWeek(coiffeurId, request.dayOfWeek());
+                .findByCoiffeurIdAndDayOfWeek(coiffeur.getId(), request.dayOfWeek());
 
         for (WorkSchedule ws : existants) {
             if (ws.getId().equals(id)) continue;
@@ -306,68 +324,50 @@ public class CoiffeurService {
                 saved.getDayOfWeek(),
                 saved.getStartTime(),
                 saved.getEndTime(),
-                saved.getCoiffeur().getId()
+                saved.getCoiffeur().getUser().getId()  // ← userId
         );
     }
 
-    public void supprimerWorkSchedule(UUID id, UUID coiffeurId) {
+    // COIFFEUR — Supprimer un horaire
+    public void supprimerWorkSchedule(UUID id, UUID userId) {
         WorkSchedule workSchedule = workScheduleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("WorkSchedule non trouvé"));
 
-        if (!workSchedule.getCoiffeur().getId().equals(coiffeurId)) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (!workSchedule.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Ce WorkSchedule ne vous appartient pas");
         }
 
         workScheduleRepository.delete(workSchedule);
     }
 
-    public List<WorkScheduleResponse> getWorkSchedules(UUID coiffeurId) {
-        // Vérifier que le coiffeur existe
-        coiffeurRepository.findById(coiffeurId)
+    // PUBLIC — Voir les horaires d'un coiffeur
+    // ✅ Après
+    public List<WorkScheduleResponse> getWorkSchedules(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        return workScheduleRepository.findByCoiffeurId(coiffeurId)
+        return workScheduleRepository.findByCoiffeurId(coiffeur.getId())
                 .stream()
                 .map(ws -> new WorkScheduleResponse(
                         ws.getId(),
                         ws.getDayOfWeek(),
                         ws.getStartTime(),
                         ws.getEndTime(),
-                        ws.getCoiffeur().getId()
+                        ws.getCoiffeur().getUser().getId()
                 ))
                 .toList();
     }
 
-    public ProfileResponse getCoiffeurProfile(UUID coiffeurId) {
-        Coiffeur coiffeur = coiffeurRepository.findById(coiffeurId)
+    // COIFFEUR — Voir son profil
+    public ProfileResponse getCoiffeurProfile(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         return new ProfileResponse(
-                coiffeur.getId(),
-                coiffeur.getUser().getName(),          // ← via User
-                coiffeur.getUser().getEmail(),         // ← via User
-                coiffeur.getUser().getProfilePicture(), // ← via User
-                coiffeur.getUser().getRole()           // ← via User
-        );
-    }
-
-    public ProfileResponse updateCoiffeurProfile(UUID coiffeurId, UpdateCoiffeurRequest request, MultipartFile file) {
-        Coiffeur coiffeur = coiffeurRepository.findById(coiffeurId)
-                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
-
-        if (request.name() != null) {
-            coiffeur.getUser().setName(request.name()); // ← via User
-        }
-
-        if (file != null && !file.isEmpty()) {
-            String url = cloudinaryService.uploadPhoto(file, "profils");
-            coiffeur.getUser().setProfilePicture(url); // ← via User
-        }
-
-        coiffeurRepository.save(coiffeur);
-
-        return new ProfileResponse(
-                coiffeur.getId(),
+                coiffeur.getUser().getId(),          // ← userId
                 coiffeur.getUser().getName(),
                 coiffeur.getUser().getEmail(),
                 coiffeur.getUser().getProfilePicture(),
@@ -375,8 +375,34 @@ public class CoiffeurService {
         );
     }
 
-    public PhotoResponse ajouterPhotoCoiffeur(UUID coiffeurId, MultipartFile file) {
-        Coiffeur coiffeur = coiffeurRepository.findById(coiffeurId)
+    // COIFFEUR — Modifier son profil
+    public ProfileResponse updateCoiffeurProfile(UUID userId, UpdateCoiffeurRequest request, MultipartFile file) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (request.name() != null) {
+            coiffeur.getUser().setName(request.name());
+        }
+
+        if (file != null && !file.isEmpty()) {
+            String url = cloudinaryService.uploadPhoto(file, "profils");
+            coiffeur.getUser().setProfilePicture(url);
+        }
+
+        coiffeurRepository.save(coiffeur);
+
+        return new ProfileResponse(
+                coiffeur.getUser().getId(),          // ← userId
+                coiffeur.getUser().getName(),
+                coiffeur.getUser().getEmail(),
+                coiffeur.getUser().getProfilePicture(),
+                coiffeur.getUser().getRole()
+        );
+    }
+
+    // COIFFEUR — Ajouter une photo
+    public PhotoResponse ajouterPhotoCoiffeur(UUID userId, MultipartFile file) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         String url = cloudinaryService.uploadPhoto(file, "coiffeurs");
@@ -390,33 +416,39 @@ public class CoiffeurService {
         return new PhotoResponse(saved.getId(), saved.getUrl());
     }
 
-    public List<PhotoResponse> getPhotosCoiffeur(UUID coiffeurId) {
-        // Vérifier que le coiffeur existe
-        coiffeurRepository.findById(coiffeurId)
+    // PUBLIC — Voir les photos d'un coiffeur
+    // ✅ Après
+    public List<PhotoResponse> getPhotosCoiffeur(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        return coiffeurPhotoRepository.findByCoiffeurId(coiffeurId)
+        return coiffeurPhotoRepository.findByCoiffeurId(coiffeur.getId())
                 .stream()
                 .map(photo -> new PhotoResponse(photo.getId(), photo.getUrl()))
                 .toList();
     }
 
-    public void supprimerPhotoCoiffeur(UUID photoId, UUID coiffeurId) {
+    // COIFFEUR — Supprimer une photo
+    public void supprimerPhotoCoiffeur(UUID photoId, UUID userId) {
         CoiffeurPhoto photo = coiffeurPhotoRepository.findById(photoId)
                 .orElseThrow(() -> new RuntimeException("Photo non trouvée"));
 
-        if (!photo.getCoiffeur().getId().equals(coiffeurId)) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (!photo.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Cette photo ne vous appartient pas");
         }
 
         coiffeurPhotoRepository.delete(photo);
     }
 
-    public PhotoResponse ajouterPhotoSalon(UUID salonId, MultipartFile file, UUID coiffeurId) {
+    // ADMIN — Ajouter une photo au salon
+    public PhotoResponse ajouterPhotoSalon(UUID salonId, MultipartFile file, UUID userId) {
         Salon salon = salonRepository.findById(salonId)
                 .orElseThrow(() -> new RuntimeException("Salon non trouvé"));
 
-        Coiffeur coiffeur = coiffeurRepository.findById(coiffeurId)
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!coiffeur.isAdmin()) {
@@ -438,8 +470,8 @@ public class CoiffeurService {
         return new PhotoResponse(saved.getId(), saved.getUrl());
     }
 
+    // PUBLIC — Voir les photos d'un salon
     public List<PhotoResponse> getPhotosSalon(UUID salonId) {
-        // Vérifier que le salon existe
         salonRepository.findById(salonId)
                 .orElseThrow(() -> new RuntimeException("Salon non trouvé"));
 
@@ -449,11 +481,12 @@ public class CoiffeurService {
                 .toList();
     }
 
-    public void supprimerPhotoSalon(UUID photoId, UUID coiffeurId) {
+    // ADMIN — Supprimer une photo du salon
+    public void supprimerPhotoSalon(UUID photoId, UUID userId) {
         SalonPhoto photo = salonPhotoRepository.findById(photoId)
                 .orElseThrow(() -> new RuntimeException("Photo non trouvée"));
 
-        Coiffeur coiffeur = coiffeurRepository.findById(coiffeurId)
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!coiffeur.isAdmin()) {
@@ -467,8 +500,9 @@ public class CoiffeurService {
         salonPhotoRepository.delete(photo);
     }
 
-    public void retirerCoiffeur(UUID salonId, RetirerCoiffeurRequest request) {
-        Coiffeur admin = coiffeurRepository.findById(request.adminId())
+    // ADMIN — Retirer un coiffeur du salon
+    public void retirerCoiffeur(UUID salonId, UUID coiffeurIdARetirer, UUID userId) {
+        Coiffeur admin = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!admin.isAdmin()) {
@@ -479,7 +513,8 @@ public class CoiffeurService {
             throw new RuntimeException("Ce salon ne vous appartient pas");
         }
 
-        Coiffeur coiffeur = coiffeurRepository.findById(request.coiffeurId())
+        // Frontend envoie coiffeurId (qui est userId) → on cherche par userId
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(coiffeurIdARetirer)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (coiffeur.getSalon() == null ||
@@ -487,7 +522,7 @@ public class CoiffeurService {
             throw new RuntimeException("Ce coiffeur ne travaille pas dans votre salon");
         }
 
-        if (request.adminId().equals(request.coiffeurId())) {
+        if (admin.getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Vous ne pouvez pas vous retirer vous-même");
         }
 
@@ -501,7 +536,7 @@ public class CoiffeurService {
         coiffeurRepository.save(coiffeur);
 
         notificationService.envoyerNotification(
-                coiffeur.getId(),
+                coiffeur.getUser().getId(),          // ← userId
                 "COIFFEUR",
                 "Retiré du salon",
                 "Vous avez été retiré du salon " + nomSalon,
@@ -510,8 +545,9 @@ public class CoiffeurService {
         );
     }
 
-    public void transfererPropriete(UUID salonId, TransfererProprieteRequest request) {
-        Coiffeur admin = coiffeurRepository.findById(request.adminId())
+    // ADMIN — Transférer la propriété du salon
+    public void transfererPropriete(UUID salonId, UUID nouveauAdminId, UUID userId) {
+        Coiffeur admin = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!admin.isAdmin()) {
@@ -522,7 +558,8 @@ public class CoiffeurService {
             throw new RuntimeException("Ce salon ne vous appartient pas");
         }
 
-        Coiffeur nouveauAdmin = coiffeurRepository.findById(request.nouveauAdminId())
+        // Frontend envoie nouveauAdminId (qui est userId) → on cherche par userId
+        Coiffeur nouveauAdmin = coiffeurRepository.findByUserId(nouveauAdminId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (nouveauAdmin.getSalon() == null ||
@@ -530,7 +567,7 @@ public class CoiffeurService {
             throw new RuntimeException("Ce coiffeur ne travaille pas dans votre salon");
         }
 
-        if (request.adminId().equals(request.nouveauAdminId())) {
+        if (admin.getId().equals(nouveauAdmin.getId())) {
             throw new RuntimeException("Vous ne pouvez pas vous transférer la propriété à vous-même");
         }
 
@@ -545,7 +582,7 @@ public class CoiffeurService {
         salonRepository.save(salon);
 
         notificationService.envoyerNotification(
-                nouveauAdmin.getId(),
+                nouveauAdmin.getUser().getId(),      // ← userId
                 "COIFFEUR",
                 "Nouveau admin",
                 "Vous êtes maintenant admin du salon " + salon.getName(),
@@ -554,17 +591,18 @@ public class CoiffeurService {
         );
 
         notificationService.envoyerNotification(
-                admin.getId(),
+                admin.getUser().getId(),             // ← userId
                 "COIFFEUR",
                 "Propriété transférée",
-                "Vous avez transféré la propriété du salon " + salon.getName() + " à " + nouveauAdmin.getUser().getName(), // ← via User
+                "Vous avez transféré la propriété du salon " + salon.getName() + " à " + nouveauAdmin.getUser().getName(),
                 salon.getId(),
                 "SALON"
         );
     }
 
-    public void supprimerSalon(UUID salonId, UUID adminId) {
-        Coiffeur admin = coiffeurRepository.findById(adminId)
+    // ADMIN — Supprimer le salon
+    public void supprimerSalon(UUID salonId, UUID userId) {
+        Coiffeur admin = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (!admin.isAdmin()) {
@@ -586,7 +624,7 @@ public class CoiffeurService {
             coiffeurRepository.save(coiffeur);
 
             notificationService.envoyerNotification(
-                    coiffeur.getId(),
+                    coiffeur.getUser().getId(),      // ← userId
                     "COIFFEUR",
                     "Salon supprimé",
                     "Le salon " + salon.getName() + " a été supprimé",
@@ -598,8 +636,9 @@ public class CoiffeurService {
         salonRepository.delete(salon);
     }
 
-    public void quitterSalon(QuitterSalonRequest request) {
-        Coiffeur coiffeur = coiffeurRepository.findById(request.coiffeurId())
+    // COIFFEUR — Quitter le salon
+    public void quitterSalon(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
         if (coiffeur.getSalon() == null) {
@@ -620,26 +659,27 @@ public class CoiffeurService {
 
         if (admin != null) {
             notificationService.envoyerNotification(
-                    admin.getId(),
+                    admin.getUser().getId(),         // ← userId
                     "COIFFEUR",
                     "Coiffeur parti",
-                    coiffeur.getUser().getName() + " a quitté votre salon", // ← via User
+                    coiffeur.getUser().getName() + " a quitté votre salon",
                     salon.getId(),
                     "SALON"
             );
         }
     }
 
-    public List<SalonRequestResponse> getDemandesByCoiffeur(UUID coiffeurId) {
-        coiffeurRepository.findById(coiffeurId)
+    // COIFFEUR — Voir ses demandes envoyées
+    public List<SalonRequestResponse> getDemandesByCoiffeur(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        return salonRequestRepository.findByCoiffeurId(coiffeurId)
+        return salonRequestRepository.findByCoiffeurId(coiffeur.getId())
                 .stream()
                 .map(demande -> new SalonRequestResponse(
                         demande.getId(),
                         demande.getStatus(),
-                        demande.getCoiffeur().getUser().getName(), // ← via User
+                        demande.getCoiffeur().getUser().getName(),
                         demande.getSalon().getName()
                 ))
                 .toList();
