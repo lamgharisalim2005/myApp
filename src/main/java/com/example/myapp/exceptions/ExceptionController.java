@@ -1,5 +1,6 @@
 package com.example.myapp.exceptions;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -19,6 +20,15 @@ public class ExceptionController {
                 new GlobalResponse.ErrorItem("Resource non trouvée")
         );
         return new ResponseEntity<>(new GlobalResponse<>(errors), HttpStatus.NOT_FOUND);
+    }
+
+    //400 bad request
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<GlobalResponse<String>> gereDataIntegrityViolationException(DataIntegrityViolationException e) {
+        var errors = List.of(
+                new GlobalResponse.ErrorItem("Ce resource deja existe")
+        );
+        return new ResponseEntity<>(new GlobalResponse<>(errors), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(RuntimeException.class)

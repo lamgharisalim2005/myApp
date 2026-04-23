@@ -72,8 +72,7 @@ public class SecurityConfig {
                         // ========== ENDPOINTS CLIENT ET COIFFEUR ==========
                         .requestMatchers("/api/messages/**").hasAnyRole("CLIENT", "COIFFEUR", "ROOT")
                         .requestMatchers("/api/notifications/**").hasAnyRole("CLIENT", "COIFFEUR", "ROOT")
-                        .requestMatchers("/api/reservations/client/**").hasAnyRole("CLIENT", "ROOT")
-                        .requestMatchers("/api/reservations/coiffeur/**").hasAnyRole("COIFFEUR", "ROOT")
+                        
 
                         // ========== TOUT LE RESTE NÉCESSITE AUTH ==========
                         .anyRequest().authenticated()

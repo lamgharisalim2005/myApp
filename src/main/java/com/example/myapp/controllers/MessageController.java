@@ -35,7 +35,7 @@ public class MessageController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new GlobalResponse<>(response));
     }
 
-    // CLIENT ET COIFFEUR — Envoyer un message via WebSocket
+    //TODO 1 CLIENT ET COIFFEUR — Envoyer un message via WebSocket ici un probleme
     @MessageMapping("/chat")
     public void envoyerMessageWebSocket(@Payload SendMessageRequest request) {
         messageService.envoyerMessage(request, null);
@@ -69,8 +69,7 @@ public class MessageController {
     public ResponseEntity<GlobalResponse<List<ConversationResponse>>> getConversations(
             HttpServletRequest httpRequest) {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
-        String role = (String) httpRequest.getAttribute("role");
-        List<ConversationResponse> conversations = messageService.getConversations(userId, role);
+        List<ConversationResponse> conversations = messageService.getConversations(userId);
         return ResponseEntity.ok(new GlobalResponse<>(conversations));
     }
 }

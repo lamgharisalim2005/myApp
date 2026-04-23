@@ -9,7 +9,6 @@ import java.util.UUID;
 
 // ✅ Après
 public record CreateReservationRequest(
-        UUID clientId,
         UUID coiffeurId,
         List<UUID> serviceIds, // ← liste de services
         LocalDateTime startTime

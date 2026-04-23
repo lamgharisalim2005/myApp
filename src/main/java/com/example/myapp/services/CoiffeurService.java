@@ -88,7 +88,6 @@ public class CoiffeurService {
 
         notificationService.envoyerNotification(
                 admin.getUser().getId(),           // ← userId
-                "COIFFEUR",
                 "Nouvelle demande",
                 "Le coiffeur " + coiffeur.getUser().getName() + " veut rejoindre votre salon",
                 saved.getId(),
@@ -166,8 +165,7 @@ public class CoiffeurService {
             coiffeurRepository.save(coiffeur);
 
             notificationService.envoyerNotification(
-                    coiffeur.getUser().getId(),        // ← userId
-                    "COIFFEUR",
+                    coiffeur.getUser().getId(),
                     "Demande acceptée",
                     "Votre demande pour rejoindre le salon " +
                             demande.getSalon().getName() + " a été acceptée",
@@ -179,7 +177,6 @@ public class CoiffeurService {
         if (status.equals("REJECTED")) {
             notificationService.envoyerNotification(
                     demande.getCoiffeur().getUser().getId(), // ← userId
-                    "COIFFEUR",
                     "Demande refusée",
                     "Votre demande pour rejoindre le salon " +
                             demande.getSalon().getName() + " a été refusée",
@@ -509,6 +506,9 @@ public class CoiffeurService {
             throw new RuntimeException("Vous n'êtes pas admin d'un salon");
         }
 
+        if (salonRepository.findById(salonId).isEmpty())
+            throw new RuntimeException("Salon non trouvé");
+
         if (!admin.getSalon().getId().equals(salonId)) {
             throw new RuntimeException("Ce salon ne vous appartient pas");
         }
@@ -537,7 +537,6 @@ public class CoiffeurService {
 
         notificationService.envoyerNotification(
                 coiffeur.getUser().getId(),          // ← userId
-                "COIFFEUR",
                 "Retiré du salon",
                 "Vous avez été retiré du salon " + nomSalon,
                 admin.getSalon().getId(),
@@ -553,6 +552,9 @@ public class CoiffeurService {
         if (!admin.isAdmin()) {
             throw new RuntimeException("Vous n'êtes pas admin d'un salon");
         }
+
+        if (salonRepository.findById(salonId).isEmpty())
+            throw new RuntimeException("Salon non trouvé");
 
         if (!admin.getSalon().getId().equals(salonId)) {
             throw new RuntimeException("Ce salon ne vous appartient pas");
@@ -583,7 +585,7 @@ public class CoiffeurService {
 
         notificationService.envoyerNotification(
                 nouveauAdmin.getUser().getId(),      // ← userId
-                "COIFFEUR",
+
                 "Nouveau admin",
                 "Vous êtes maintenant admin du salon " + salon.getName(),
                 salon.getId(),
@@ -592,7 +594,6 @@ public class CoiffeurService {
 
         notificationService.envoyerNotification(
                 admin.getUser().getId(),             // ← userId
-                "COIFFEUR",
                 "Propriété transférée",
                 "Vous avez transféré la propriété du salon " + salon.getName() + " à " + nouveauAdmin.getUser().getName(),
                 salon.getId(),
@@ -608,6 +609,8 @@ public class CoiffeurService {
         if (!admin.isAdmin()) {
             throw new RuntimeException("Vous n'êtes pas admin d'un salon");
         }
+        if (salonRepository.findById(salonId).isEmpty())
+            throw new RuntimeException("Salon non trouvé");
 
         if (!admin.getSalon().getId().equals(salonId)) {
             throw new RuntimeException("Ce salon ne vous appartient pas");
@@ -625,7 +628,6 @@ public class CoiffeurService {
 
             notificationService.envoyerNotification(
                     coiffeur.getUser().getId(),      // ← userId
-                    "COIFFEUR",
                     "Salon supprimé",
                     "Le salon " + salon.getName() + " a été supprimé",
                     salonId,
@@ -660,7 +662,6 @@ public class CoiffeurService {
         if (admin != null) {
             notificationService.envoyerNotification(
                     admin.getUser().getId(),         // ← userId
-                    "COIFFEUR",
                     "Coiffeur parti",
                     coiffeur.getUser().getName() + " a quitté votre salon",
                     salon.getId(),

@@ -6,15 +6,18 @@ import com.example.myapp.dtos.SendMessageRequest;
 import com.example.myapp.entitys.Client;
 import com.example.myapp.entitys.Coiffeur;
 import com.example.myapp.entitys.Message;
+import com.example.myapp.entitys.User;
 import com.example.myapp.repositories.ClientRepository;
 import com.example.myapp.repositories.CoiffeurRepository;
 import com.example.myapp.repositories.MessageRepository;
+import com.example.myapp.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -25,30 +28,24 @@ public class MessageService {
     private final SimpMessagingTemplate messagingTemplate;
     private final CoiffeurRepository coiffeurRepository;
     private final ClientRepository clientRepository;
+    private final UserRepository userRepository;
 
     // ✅ Envoyer un message — userId extrait du JWT
     public MessageResponse envoyerMessage(SendMessageRequest request, UUID userId) {
 
         // 1. Vérifier que l'expéditeur existe
-        if (request.senderType().equals("CLIENT")) {
-            clientRepository.findById(request.senderId())
-                    .orElseThrow(() -> new RuntimeException("Client non trouvé"));
-        } else if (request.senderType().equals("COIFFEUR")) {
-            coiffeurRepository.findById(request.senderId())
-                    .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
-        }
+        Optional<User> sender = userRepository.findById(userId);
+        if (sender.isEmpty())
+            throw new RuntimeException("sender non trouvé");
 
         // 2. Vérifier que le destinataire existe
-        if (request.receiverType().equals("CLIENT")) {
-            clientRepository.findById(request.receiverId())
-                    .orElseThrow(() -> new RuntimeException("Client non trouvé"));
-        } else if (request.receiverType().equals("COIFFEUR")) {
-            coiffeurRepository.findById(request.receiverId())
-                    .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+        Optional<User> reciever = userRepository.findById(request.receiverId());
+        if (reciever.isEmpty()) {
+            throw new RuntimeException("reciever non trouvé");
         }
 
         // 3. Vérifier que l'expéditeur ne s'envoie pas un message à lui-même
-        if (request.senderId().equals(request.receiverId())) {
+        if (sender.get().getId().equals(reciever.get().getId())) {
             throw new RuntimeException("Vous ne pouvez pas vous envoyer un message à vous-même");
         }
 
@@ -59,10 +56,10 @@ public class MessageService {
 
         // 5. Sauvegarder le message
         Message message = new Message();
-        message.setSenderId(request.senderId());
-        message.setSenderType(request.senderType());
-        message.setReceiverId(request.receiverId());
-        message.setReceiverType(request.receiverType());
+        message.setSenderId(sender.get().getId());
+        message.setSenderType(sender.get().getRole());
+        message.setReceiverId(reciever.get().getId());
+        message.setReceiverType(reciever.get().getRole());
         message.setContent(request.content());
         message.setCreatedAt(LocalDateTime.now());
         message.setStatus("SENT");
@@ -162,7 +159,7 @@ public class MessageService {
     }
 
     // ✅ Voir toutes les conversations — unifié pour CLIENT et COIFFEUR
-    public List<ConversationResponse> getConversations(UUID userId, String role) {
+    public List<ConversationResponse> getConversations(UUID userId) {
         List<UUID> partnerIds = messageRepository.findConversationPartners(userId);
 
         return partnerIds.stream()
@@ -173,10 +170,10 @@ public class MessageService {
 
                     if (lastMessage == null) return null;
 
-                    String partnerName = "Inconnu";
+                    String partnerName = userRepository.findById(partnerId).get().getName();
                     String partnerType;
 
-                    if (role.equals("CLIENT")) {
+                    if (userRepository.findById(userId).get().getRole().equals("CLIENT")) {
                         // Client parle avec des coiffeurs
                         Coiffeur coiffeur = coiffeurRepository.findById(partnerId).orElse(null);
                         if (coiffeur != null) partnerName = coiffeur.getUser().getName();

@@ -49,21 +49,21 @@ public class GoogleOAuth2Service {
         String name = (String) payload.get("name");
         String profilePicture = (String) payload.get("picture");
 
-        // 3. Si l'email correspond au ROOT → forcer le role à "ROOT"
-        if (email.equals(rootEmail)) {
-            role = "ROOT";
-        }
-
-        // 4. Vérifier que le role est valide
-        if (!role.equals("CLIENT") && !role.equals("COIFFEUR") && !role.equals("ROOT")) {
-            throw new RuntimeException("Rôle invalide");
-        }
 
         // 5. Chercher l'utilisateur en DB par googleId
         User user = userRepository.findByGoogleId(googleId).orElse(null);
 
         // 6. Si n'existe pas → créer nouveau compte
         if (user == null) {
+            // 3. Si l'email correspond au ROOT → forcer le role à "ROOT"
+            if (email.equals(rootEmail)) {
+                role = "ROOT";
+            }
+
+            // TODO  4. Vérifier que le role est valide
+            else if (!role.equals("CLIENT") && !role.equals("COIFFEUR")) {
+                throw new RuntimeException("Rôle invalide");
+            }
             user = new User();
             user.setEmail(email);
             user.setName(name);
@@ -97,18 +97,6 @@ public class GoogleOAuth2Service {
         response.put("name", user.getName());
         response.put("email", user.getEmail());
         response.put("profilePicture", user.getProfilePicture());
-
-        // 9. Ajouter clientId ou coiffeurId selon le role
-        if (user.getRole().equals("CLIENT")) {
-            Client client = clientRepository.findByUserId(user.getId())
-                    .orElseThrow(() -> new RuntimeException("Client non trouvé"));
-            response.put("clientId", client.getId().toString());
-        } else if (user.getRole().equals("COIFFEUR")) {
-            Coiffeur coiffeur = coiffeurRepository.findByUserId(user.getId())
-                    .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
-            response.put("coiffeurId", coiffeur.getId().toString());
-            response.put("isAdmin", String.valueOf(coiffeur.isAdmin()));
-        }
 
         return response;
     }

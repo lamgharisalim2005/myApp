@@ -107,7 +107,6 @@ public class PaymentService {
             // ✅ Notifier le coiffeur
             notificationService.envoyerNotification(
                     reservation.getCoiffeur().getUser().getId(), // ← via User
-                    "COIFFEUR",
                     "Paiement reçu",
                     "Le client " + reservation.getClient().getUser().getName() +
                             " a payé pour " + nomsServices,
@@ -119,7 +118,6 @@ public class PaymentService {
             // ✅ Notifier le client
             notificationService.envoyerNotification(
                     reservation.getClient().getUser().getId(), // ← via User
-                    "CLIENT",
                     "Paiement confirmé",
                     "Votre paiement pour " + nomsServices +
                             " a été confirmé avec succès",
@@ -135,7 +133,6 @@ public class PaymentService {
             // ✅ Notifier le client en cas d'échec
             notificationService.envoyerNotification(
                     reservation.getClient().getUser().getId(), // ← via User
-                    "CLIENT",
                     "Paiement échoué",
                     "Votre paiement pour " + nomsServices +
                             " a échoué. Veuillez réessayer.",

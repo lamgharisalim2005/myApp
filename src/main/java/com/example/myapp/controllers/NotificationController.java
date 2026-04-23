@@ -19,25 +19,16 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // CLIENT — Voir ses notifications
+    // CLIENT ET COIFFEUR — Voir ses notifications
     // userId extrait automatiquement du JWT
-    @GetMapping("/client")
+    @GetMapping("/user")
     public ResponseEntity<GlobalResponse<List<NotificationResponse>>> getNotificationsClient(
             HttpServletRequest httpRequest) {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
-        List<NotificationResponse> notifications = notificationService.getNotifications(userId, "CLIENT");
+        List<NotificationResponse> notifications = notificationService.getNotifications(userId);
         return ResponseEntity.ok(new GlobalResponse<>(notifications));
     }
 
-    // COIFFEUR — Voir ses notifications
-    // userId extrait automatiquement du JWT
-    @GetMapping("/coiffeur")
-    public ResponseEntity<GlobalResponse<List<NotificationResponse>>> getNotificationsCoiffeur(
-            HttpServletRequest httpRequest) {
-        UUID userId = (UUID) httpRequest.getAttribute("userId");
-        List<NotificationResponse> notifications = notificationService.getNotifications(userId, "COIFFEUR");
-        return ResponseEntity.ok(new GlobalResponse<>(notifications));
-    }
 
     // CLIENT ET COIFFEUR — Marquer une notification comme lue
     // userId extrait automatiquement du JWT
