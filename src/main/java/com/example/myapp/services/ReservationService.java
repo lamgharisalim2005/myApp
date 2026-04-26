@@ -233,4 +233,22 @@ public class ReservationService {
                 totalPrice
         );
     }
+
+    public List<SlotResponse> getConfirmedSlots(UUID coiffeurId) {
+
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(coiffeurId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        // Retourner les réservations CONFIRMED dans le futur uniquement
+        List<Reservation> confirmed = reservationRepository
+                .findByCoiffeurIdAndStatusAndStartTimeAfter(
+                        coiffeur.getId(),
+                        "CONFIRMED",
+                        LocalDateTime.now()
+                );
+
+        return confirmed.stream()
+                .map(r -> new SlotResponse(r.getStartTime(), r.getEndTime()))
+                .toList();
+    }
 }

@@ -34,5 +34,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     @Query("SELECT r FROM Reservation r WHERE r.status = 'CONFIRMED' " +
             "AND r.endTime < :now")
     List<Reservation> findReservationsACompleter(@Param("now") LocalDateTime now);
-    
+
+    List<Reservation> findByCoiffeurIdAndStatusAndStartTimeAfter(UUID id, String confirmed, LocalDateTime now);
 }

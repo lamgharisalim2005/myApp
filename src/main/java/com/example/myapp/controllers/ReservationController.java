@@ -2,6 +2,7 @@ package com.example.myapp.controllers;
 
 import com.example.myapp.dtos.CreateReservationRequest;
 import com.example.myapp.dtos.ReservationResponse;
+import com.example.myapp.dtos.SlotResponse;
 import com.example.myapp.exceptions.GlobalResponse;
 import com.example.myapp.services.ReservationService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,5 +63,13 @@ public class ReservationController {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
         List<ReservationResponse> reservations = reservationService.getReservationsCoiffeur(userId);
         return ResponseEntity.ok(new GlobalResponse<>(reservations));
+    }
+
+    // CLIENT — Voir les créneaux CONFIRMÉS futurs d'un coiffeur
+    @GetMapping("/coiffeur/{coiffeurId}/slots")
+    public ResponseEntity<GlobalResponse<List<SlotResponse>>> getConfirmedSlots(
+            @PathVariable UUID coiffeurId) {
+        List<SlotResponse> slots = reservationService.getConfirmedSlots(coiffeurId);
+        return ResponseEntity.ok(new GlobalResponse<>(slots));
     }
 }

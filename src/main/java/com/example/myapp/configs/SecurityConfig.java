@@ -38,40 +38,39 @@ public class SecurityConfig {
                                 "/ws/**"                     // WebSocket
                         ).permitAll()
 
-                        // GET publics — voir les infos publiques sans compte
-                        .requestMatchers(HttpMethod.GET, "/api/salons").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/salons/*/detail").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/salons/*/photos").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/coiffeurs/*/detail").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/coiffeurs/*/photos").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/workschedules/coiffeur/*").permitAll()
+                        // ========== ENDPOINTS CLIENT ET COIFFEUR ==========
+                        .requestMatchers(HttpMethod.GET, "/api/salons").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/salons/*/detail").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/salons/*/photos").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/coiffeurs/*/detail").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/coiffeurs/*/photos").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/workschedules/coiffeur/*").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers("/api/messages/**").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers("/api/notifications/**").hasAnyRole("CLIENT", "COIFFEUR")
 
                         // Webhook Stripe
                         .requestMatchers("/api/payments/webhook").permitAll()
 
                         // ========== ENDPOINTS CLIENT UNIQUEMENT ==========
-                        .requestMatchers("/api/clients/**").hasAnyRole("CLIENT", "ROOT")
-                        .requestMatchers(HttpMethod.POST, "/api/reservations").hasAnyRole("CLIENT", "ROOT")
-                        .requestMatchers("/api/payments/intent").hasAnyRole("CLIENT", "ROOT")
+                        .requestMatchers("/api/clients/**").hasAnyRole("CLIENT")
+                        .requestMatchers(HttpMethod.POST, "/api/reservations").hasAnyRole("CLIENT")
+                        .requestMatchers("/api/payments/intent").hasAnyRole("CLIENT")
+                        .requestMatchers(HttpMethod.GET, "/api/reservations/coiffeur/*/slots").hasRole("CLIENT")
 
                         // ========== ENDPOINTS COIFFEUR UNIQUEMENT ==========
-                        .requestMatchers("/api/services/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers("/api/workschedules/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.POST, "/api/salons").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.DELETE, "/api/salons/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.PUT, "/api/salons/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.POST, "/api/salons/*/photos").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.DELETE, "/api/salons/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers("/api/salon-requests/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers("/api/coiffeurs/*/profile").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.POST, "/api/coiffeurs/*/photos").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.DELETE, "/api/coiffeurs/**").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.PUT, "/api/coiffeurs/*/quitter-salon").hasAnyRole("COIFFEUR", "ROOT")
-                        .requestMatchers(HttpMethod.PUT, "/api/reservations/*").hasAnyRole("COIFFEUR", "ROOT")
-
-                        // ========== ENDPOINTS CLIENT ET COIFFEUR ==========
-                        .requestMatchers("/api/messages/**").hasAnyRole("CLIENT", "COIFFEUR", "ROOT")
-                        .requestMatchers("/api/notifications/**").hasAnyRole("CLIENT", "COIFFEUR", "ROOT")
+                        .requestMatchers("/api/services/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers("/api/workschedules/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.POST, "/api/salons").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/salons/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.PUT, "/api/salons/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.POST, "/api/salons/*/photos").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/salons/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers("/api/salon-requests/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers("/api/coiffeurs/*/profile").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.POST, "/api/coiffeurs/*/photos").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/coiffeurs/**").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.PUT, "/api/coiffeurs/*/quitter-salon").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.PUT, "/api/reservations/*").hasAnyRole("COIFFEUR")
 
 
                         // ========== TOUT LE RESTE NÉCESSITE AUTH ==========
