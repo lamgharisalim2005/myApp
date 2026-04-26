@@ -33,4 +33,19 @@ public class AuthController {
 
         return ResponseEntity.ok(new GlobalResponse<>(response));
     }
+    @PostMapping("/google/check")
+    public ResponseEntity<GlobalResponse<Map<String, String>>> checkUser(
+            @RequestBody Map<String, String> request) {
+
+        String googleIdToken = request.get("idToken");
+
+        if (googleIdToken == null) {
+            throw new RuntimeException("idToken est obligatoire");
+        }
+
+        Map<String, String> response = googleOAuth2Service.checkUser(googleIdToken);
+
+        return ResponseEntity.ok(new GlobalResponse<>(response));
+    }
+
 }

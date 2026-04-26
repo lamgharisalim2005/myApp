@@ -133,4 +133,39 @@ public class GoogleOAuth2Service {
             throw new RuntimeException("Erreur lors de la vérification du token Google : " + e.getMessage());
         }
     }
+
+    public Map<String, String> checkUser(String googleIdToken) {
+
+        // 1. Vérifier le token Google
+        GoogleIdToken idToken = verifyGoogleToken(googleIdToken);
+        if (idToken == null) {
+            throw new RuntimeException("Token Google invalide");
+        }
+
+        // 2. Extraire le googleId
+        GoogleIdToken.Payload payload = idToken.getPayload();
+        String googleId = payload.getSubject();
+
+        // 3. Chercher l'utilisateur en DB
+        User user = userRepository.findByGoogleId(googleId).orElse(null);
+
+        // 4. Si n'existe pas → retourner erreur
+        if (user == null) {
+            throw new RuntimeException("Utilisateur non trouvé");
+        }
+
+        // 5. Générer le JWT
+        String jwt = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole());
+
+        // 6. Retourner les infos
+        Map<String, String> response = new HashMap<>();
+        response.put("token", jwt);
+        response.put("userId", user.getId().toString());
+        response.put("role", user.getRole());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("profilePicture", user.getProfilePicture());
+
+        return response;
+    }
 }
