@@ -5,13 +5,14 @@ import java.util.UUID;
 
 public record MessageResponse(
         UUID id,
-        UUID senderId,      // ← userId de l'expéditeur
+        UUID senderId,
         String senderType,
-        UUID receiverId,    // ← userId du destinataire
+        UUID receiverId,
         String receiverType,
         String content,
         LocalDateTime createdAt,
         String status,
-        boolean isMe
+        boolean isMe,
+        String senderProfilePicture  // ← Ajoute ça
 ) {
 }

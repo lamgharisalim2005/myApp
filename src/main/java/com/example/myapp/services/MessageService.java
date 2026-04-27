@@ -74,7 +74,8 @@ public class MessageService {
                 saved.getContent(),
                 saved.getCreatedAt(),
                 saved.getStatus(),
-                true // ← isMe = true pour l'expéditeur
+                true,
+                sender.get().getProfilePicture()
         );
 
         // 6. Envoyer via WebSocket au destinataire
@@ -89,7 +90,8 @@ public class MessageService {
                         saved.getContent(),
                         saved.getCreatedAt(),
                         saved.getStatus(),
-                        false // ← isMe = false pour le destinataire
+                        false,
+                        sender.get().getProfilePicture()
                 )
         );
 
@@ -115,7 +117,8 @@ public class MessageService {
                         message.getContent(),
                         message.getCreatedAt(),
                         message.getStatus(),
-                        message.getSenderId().equals(userId) // ← isMe
+                        message.getSenderId().equals(userId),
+                        userRepository.findById(message.getSenderId()).get().getProfilePicture()
                 ))
                 .toList();
     }
@@ -153,7 +156,8 @@ public class MessageService {
                         message.getContent(),
                         message.getCreatedAt(),
                         message.getStatus(),
-                        false // ← isMe = false
+                        false,
+                        userRepository.findById(message.getSenderId()).get().getProfilePicture()
                 )
         );
     }
@@ -174,15 +178,11 @@ public class MessageService {
                     String partnerType;
 
                     if (userRepository.findById(userId).get().getRole().equals("CLIENT")) {
-                        // Client parle avec des coiffeurs
-                        Coiffeur coiffeur = coiffeurRepository.findById(partnerId).orElse(null);
-                        if (coiffeur != null) partnerName = coiffeur.getUser().getName();
                         partnerType = "COIFFEUR";
+                        partnerName = userRepository.findById(partnerId).get().getName();
                     } else {
-                        // Coiffeur parle avec des clients
-                        Client client = clientRepository.findById(partnerId).orElse(null);
-                        if (client != null) partnerName = client.getUser().getName();
                         partnerType = "CLIENT";
+                        partnerName = userRepository.findById(partnerId).get().getName();
                     }
 
                     return new ConversationResponse(
@@ -190,7 +190,8 @@ public class MessageService {
                             partnerName,
                             partnerType,
                             lastMessage.getContent(),
-                            lastMessage.getCreatedAt()
+                            lastMessage.getCreatedAt(),
+                            userRepository.findById(partnerId).get().getProfilePicture()
                     );
                 })
                 .filter(c -> c != null)

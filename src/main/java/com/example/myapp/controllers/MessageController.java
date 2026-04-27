@@ -1,5 +1,6 @@
 package com.example.myapp.controllers;
 
+import com.example.myapp.configs.WebSocketEventListener;
 import com.example.myapp.dtos.ConversationResponse;
 import com.example.myapp.dtos.MessageResponse;
 import com.example.myapp.dtos.SendMessageRequest;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,10 +37,14 @@ public class MessageController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new GlobalResponse<>(response));
     }
 
-    //TODO 1 CLIENT ET COIFFEUR — Envoyer un message via WebSocket ici un probleme
     @MessageMapping("/chat")
-    public void envoyerMessageWebSocket(@Payload SendMessageRequest request) {
-        messageService.envoyerMessage(request, null);
+    public void envoyerMessageWebSocket(
+            @Payload SendMessageRequest request,
+            SimpMessageHeaderAccessor headerAccessor) {
+        UUID userId = (UUID) headerAccessor.getSessionAttributes().get("userId");
+        if (userId != null) {
+            messageService.envoyerMessage(request, userId);
+        }
     }
 
     // CLIENT ET COIFFEUR — Voir une conversation
@@ -71,5 +77,11 @@ public class MessageController {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
         List<ConversationResponse> conversations = messageService.getConversations(userId);
         return ResponseEntity.ok(new GlobalResponse<>(conversations));
+    }
+
+    @GetMapping("/online/{userId}")
+    public ResponseEntity<GlobalResponse<Boolean>> isOnline(@PathVariable UUID userId) {
+        boolean online = WebSocketEventListener.onlineUsers.containsKey(userId);
+        return ResponseEntity.ok(new GlobalResponse<>(online));
     }
 }

@@ -37,7 +37,21 @@ public class NotificationService {
         notification.setEventId(eventId);
         notification.setEventType(eventType);
         Notification saved = notificationRepository.save(notification);
-
+        // Envoyer via WebSocket en temps réel
+        messagingTemplate.convertAndSend(
+                "/queue/notifications/" + userId,
+                new NotificationResponse(
+                        saved.getId(),
+                        saved.getTitle(),
+                        saved.getMessage(),
+                        saved.isReadStatus(),
+                        saved.getCreatedAt(),
+                        saved.getUserId(),
+                        saved.getUserType(),
+                        saved.getEventId(),
+                        saved.getEventType()
+                )
+        );
         NotificationResponse response = new NotificationResponse(
                 saved.getId(),
                 saved.getTitle(),

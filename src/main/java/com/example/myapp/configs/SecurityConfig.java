@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/workschedules/coiffeur/*").hasAnyRole("CLIENT", "COIFFEUR")
                         .requestMatchers("/api/messages/**").hasAnyRole("CLIENT", "COIFFEUR")
                         .requestMatchers("/api/notifications/**").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/messages/online/*").hasAnyRole("CLIENT", "COIFFEUR")
 
                         // Webhook Stripe
                         .requestMatchers("/api/payments/webhook").permitAll()
