@@ -45,7 +45,8 @@ public class ClientService {
                 client.getUser().getName(),
                 client.getUser().getEmail(),
                 client.getUser().getProfilePicture(),
-                client.getUser().getRole()
+                client.getUser().getRole(),
+                false
         );
     }
 
@@ -71,7 +72,8 @@ public class ClientService {
                 client.getUser().getName(),
                 client.getUser().getEmail(),
                 client.getUser().getProfilePicture(),
-                client.getUser().getRole()
+                client.getUser().getRole(),
+                false
         );
     }
 
@@ -146,6 +148,19 @@ public class ClientService {
                 photos,
                 services,
                 salon
+        );
+    }
+
+    public ProfileResponse getClientPublicProfile(UUID userId) {
+        Client client = clientRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé"));
+        return new ProfileResponse(
+                client.getUser().getId(),
+                client.getUser().getName(),
+                client.getUser().getEmail(),
+                client.getUser().getProfilePicture(),
+                "CLIENT",
+                false
         );
     }
 }

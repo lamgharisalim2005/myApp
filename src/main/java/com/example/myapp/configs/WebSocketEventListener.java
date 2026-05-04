@@ -4,13 +4,12 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,18 +22,21 @@ public class WebSocketEventListener {
     // Map pour stocker les utilisateurs connectés
     public static final Map<UUID, Boolean> onlineUsers = new ConcurrentHashMap<>();
 
+
     @EventListener
-    public void handleWebSocketConnect(SessionConnectedEvent event) {
+    public void handleWebSocketConnect(SessionSubscribeEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        System.out.println("🔌 Subscribe - Session attributes: " + accessor.getSessionAttributes());
+
         if (accessor.getSessionAttributes() != null) {
             UUID userId = (UUID) accessor.getSessionAttributes().get("userId");
-            if (userId != null) {
+            System.out.println("🔌 Subscribe - UserId: " + userId);
+            if (userId != null && !onlineUsers.containsKey(userId)) {
                 onlineUsers.put(userId, true);
-                // Notifier tout le monde que cet utilisateur est en ligne
                 Map<String, Object> payload = new HashMap<>();
                 payload.put("userId", userId.toString());
                 payload.put("online", true);
-                messagingTemplate.convertAndSend("/queue/online/" + userId, (Object) payload);
+                messagingTemplate.convertAndSend("/topic/online", (Object) payload);
             }
         }
     }
@@ -50,7 +52,7 @@ public class WebSocketEventListener {
                 Map<String, Object> payload = new HashMap<>();
                 payload.put("userId", userId.toString());
                 payload.put("online", false);
-                messagingTemplate.convertAndSend("/queue/online/" + userId, (Object) payload);
+                messagingTemplate.convertAndSend("/topic/online", (Object) payload);
             }
         }
     }

@@ -363,13 +363,16 @@ public class CoiffeurService {
     public ProfileResponse getCoiffeurProfile(UUID userId) {
         Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+        System.out.println("🔍 isAdmin value: " + coiffeur.isAdmin());
+        System.out.println("🔍 isAdmin getIsAdmin: " + coiffeur.isAdmin());
 
         return new ProfileResponse(
                 coiffeur.getUser().getId(),          // ← userId
                 coiffeur.getUser().getName(),
                 coiffeur.getUser().getEmail(),
                 coiffeur.getUser().getProfilePicture(),
-                coiffeur.getUser().getRole()
+                coiffeur.getUser().getRole(),
+                coiffeur.isAdmin()
         );
     }
 
@@ -394,7 +397,8 @@ public class CoiffeurService {
                 coiffeur.getUser().getName(),
                 coiffeur.getUser().getEmail(),
                 coiffeur.getUser().getProfilePicture(),
-                coiffeur.getUser().getRole()
+                coiffeur.getUser().getRole(),
+                coiffeur.isAdmin()
         );
     }
 
@@ -636,6 +640,12 @@ public class CoiffeurService {
             );
         });
 
+        // Supprimer toutes les demandes liées à ce salon
+        List<SalonRequest> demandes = salonRequestRepository.findBySalonId(salonId);
+        salonRequestRepository.deleteAll(demandes);
+
+        salonRepository.delete(salon);
+
         salonRepository.delete(salon);
     }
 
@@ -685,5 +695,18 @@ public class CoiffeurService {
                         demande.getSalon().getName()
                 ))
                 .toList();
+    }
+
+    public ProfileResponse getCoiffeurPublicProfile(UUID userId) {
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+        return new ProfileResponse(
+                coiffeur.getUser().getId(),
+                coiffeur.getUser().getName(),
+                coiffeur.getUser().getEmail(),
+                coiffeur.getUser().getProfilePicture(),
+                "COIFFEUR",
+                coiffeur.isAdmin()
+        );
     }
 }

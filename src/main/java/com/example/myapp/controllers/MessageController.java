@@ -81,7 +81,12 @@ public class MessageController {
 
     @GetMapping("/online/{userId}")
     public ResponseEntity<GlobalResponse<Boolean>> isOnline(@PathVariable UUID userId) {
+        System.out.println("🔍 Checking online for: " + userId);
+        System.out.println("🔍 Online users: " + WebSocketEventListener.onlineUsers);
         boolean online = WebSocketEventListener.onlineUsers.containsKey(userId);
+        System.out.println("🔍 Result: " + online);
         return ResponseEntity.ok(new GlobalResponse<>(online));
     }
+
+
 }

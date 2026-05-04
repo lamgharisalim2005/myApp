@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +23,7 @@ public class SalonController {
 
     private final CoiffeurService coiffeurService;
     private final ClientService clientService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // PUBLIC — Voir tous les salons
     @GetMapping
@@ -47,29 +49,34 @@ public class SalonController {
     }
 
     // COIFFEUR — Créer un salon → 201 Created
-    // userId extrait automatiquement du JWT
     @PostMapping
     public ResponseEntity<GlobalResponse<SalonResponse>> creerSalon(
             @RequestBody CreateSalonRequest request,
             HttpServletRequest httpRequest) {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
         SalonResponse salon = coiffeurService.creerSalon(request, userId);
+
+        // Notifier tous les utilisateurs connectés
+        messagingTemplate.convertAndSend("/topic/salons", "NOUVEAU_SALON");
+
         return ResponseEntity.status(HttpStatus.CREATED).body(new GlobalResponse<>(salon));
     }
 
-    // ADMIN — Supprimer le salon → 204 No Content
-    // userId extrait automatiquement du JWT
+    // ADMIN — Supprimer le salon
     @DeleteMapping("/{salonId}")
     public ResponseEntity<Void> supprimerSalon(
             @PathVariable UUID salonId,
             HttpServletRequest httpRequest) {
         UUID userId = (UUID) httpRequest.getAttribute("userId");
         coiffeurService.supprimerSalon(salonId, userId);
+
+        // Notifier tous les utilisateurs connectés
+        messagingTemplate.convertAndSend("/topic/salons", "SALON_SUPPRIME");
+
         return ResponseEntity.noContent().build();
     }
 
     // ADMIN — Transférer la propriété
-    // userId extrait automatiquement du JWT
     @PutMapping("/{salonId}/transferer")
     public ResponseEntity<GlobalResponse<String>> transfererPropriete(
             @PathVariable UUID salonId,
@@ -81,7 +88,6 @@ public class SalonController {
     }
 
     // ADMIN — Retirer un coiffeur du salon
-    // userId extrait automatiquement du JWT
     @PutMapping("/{salonId}/retirer")
     public ResponseEntity<GlobalResponse<String>> retirerCoiffeur(
             @PathVariable UUID salonId,
@@ -92,8 +98,7 @@ public class SalonController {
         return ResponseEntity.ok(new GlobalResponse<>("Coiffeur retiré avec succès"));
     }
 
-    // ADMIN — Ajouter une photo au salon → 201 Created
-    // userId extrait automatiquement du JWT
+    // ADMIN — Ajouter une photo au salon
     @PostMapping("/{salonId}/photos")
     public ResponseEntity<GlobalResponse<PhotoResponse>> ajouterPhotoSalon(
             @PathVariable UUID salonId,
@@ -104,8 +109,7 @@ public class SalonController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new GlobalResponse<>(photo));
     }
 
-    // ADMIN — Supprimer une photo du salon → 204 No Content
-    // userId extrait automatiquement du JWT
+    // ADMIN — Supprimer une photo du salon
     @DeleteMapping("/{salonId}/photos/{photoId}")
     public ResponseEntity<Void> supprimerPhotoSalon(
             @PathVariable UUID salonId,

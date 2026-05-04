@@ -72,4 +72,24 @@ public class ReservationController {
         List<SlotResponse> slots = reservationService.getConfirmedSlots(coiffeurId);
         return ResponseEntity.ok(new GlobalResponse<>(slots));
     }
+
+    // CLIENT — Annuler une réservation PENDING
+    @PutMapping("/{reservationId}/cancel")
+    public ResponseEntity<GlobalResponse<ReservationResponse>> annulerReservation(
+            @PathVariable UUID reservationId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
+        ReservationResponse response = reservationService.annulerReservation(reservationId, userId);
+        return ResponseEntity.ok(new GlobalResponse<>(response));
+    }
+
+    // CLIENT ET COIFFEUR — Supprimer une réservation passée
+    @DeleteMapping("/{reservationId}")
+    public ResponseEntity<GlobalResponse<String>> supprimerReservation(
+            @PathVariable UUID reservationId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
+        reservationService.supprimerReservation(reservationId, userId);
+        return ResponseEntity.ok(new GlobalResponse<>("Réservation supprimée"));
+    }
 }

@@ -6,6 +6,7 @@ import com.example.myapp.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -23,10 +24,8 @@ public class ReservationService {
     private final WorkScheduleRepository workScheduleRepository;
     private final NotificationService notificationService;
 
-    // ✅ creerReservation — utilise userId
     public ReservationResponse creerReservation(CreateReservationRequest request, UUID userId) {
 
-        // Chercher le client par userId
         Client client = clientRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("User non trouvé"));
 
@@ -72,8 +71,14 @@ public class ReservationService {
             throw new RuntimeException("Le coiffeur ne travaille pas à ce créneau");
         }
 
-        if (reservationRepository.existsConflict(request.coiffeurId(), startTime, endTime)) {
-            throw new RuntimeException("Ce créneau est déjà réservé");
+        // Vérifier que le coiffeur n'a pas déjà un créneau CONFIRMED ou WAITING_PAYMENT
+        if (reservationRepository.existsConflict(coiffeur.getId(), startTime, endTime)) {
+            throw new RuntimeException("Ce créneau est déjà confirmé par le coiffeur");
+        }
+
+        // Vérifier que le client n'a pas déjà une réservation qui chevauche ce créneau
+        if (reservationRepository.existsClientConflict(client.getId(), startTime, endTime)) {
+            throw new RuntimeException("Vous avez déjà une réservation active sur ce créneau");
         }
 
         Reservation reservation = new Reservation();
@@ -90,7 +95,6 @@ public class ReservationService {
                 .map(com.example.myapp.entitys.Service::getName)
                 .collect(Collectors.joining(", "));
 
-        // ✅ utilise getUser().getId() pour les notifications
         notificationService.envoyerNotification(
                 coiffeur.getUser().getId(),
                 "Nouvelle demande de réservation",
@@ -103,16 +107,13 @@ public class ReservationService {
         return mapToResponse(saved);
     }
 
-    // ✅ traiterReservation — utilise userId
     public ReservationResponse traiterReservation(UUID reservationId, String decision, UUID userId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
 
-        // Chercher le coiffeur par userId
         Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        // Vérifier que la réservation appartient à ce coiffeur
         if (!reservation.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Cette réservation ne vous appartient pas");
         }
@@ -121,8 +122,9 @@ public class ReservationService {
             throw new RuntimeException("Cette réservation n'est plus en attente");
         }
 
-        if (!decision.equals("CONFIRMED") && !decision.equals("CANCELLED")) {
-            throw new RuntimeException("Décision invalide — utilisez CONFIRMED ou CANCELLED");
+        // ✅ CONFIRMED ou REJECTED — plus CANCELLED
+        if (!decision.equals("CONFIRMED") && !decision.equals("REJECTED")) {
+            throw new RuntimeException("Décision invalide — utilisez CONFIRMED ou REJECTED");
         }
 
         String nomsServices = reservation.getServices()
@@ -134,7 +136,6 @@ public class ReservationService {
             reservation.setStatus("WAITING_PAYMENT");
             reservationRepository.save(reservation);
 
-            // ✅ utilise getUser().getId() pour les notifications
             notificationService.envoyerNotification(
                     reservation.getClient().getUser().getId(),
                     "Réservation confirmée",
@@ -145,11 +146,11 @@ public class ReservationService {
             );
         }
 
-        if (decision.equals("CANCELLED")) {
-            reservation.setStatus("CANCELLED");
+        // ✅ REJECTED — le client ne peut pas recréer au même créneau
+        if (decision.equals("REJECTED")) {
+            reservation.setStatus("REJECTED");
             reservationRepository.save(reservation);
 
-            // ✅ utilise getUser().getId() pour les notifications
             notificationService.envoyerNotification(
                     reservation.getClient().getUser().getId(),
                     "Réservation refusée",
@@ -163,7 +164,7 @@ public class ReservationService {
         return mapToResponse(reservation);
     }
 
-    // Scheduler — passe automatiquement à COMPLETED quand endTime est dépassé
+    @Transactional
     @Scheduled(fixedRate = 60000)
     public void completerReservations() {
         List<Reservation> reservations = reservationRepository
@@ -178,7 +179,6 @@ public class ReservationService {
                     .map(com.example.myapp.entitys.Service::getName)
                     .collect(Collectors.joining(", "));
 
-            // ✅ utilise getUser().getId() pour les notifications
             notificationService.envoyerNotification(
                     reservation.getClient().getUser().getId(),
                     "Service terminé",
@@ -189,7 +189,6 @@ public class ReservationService {
         });
     }
 
-    // ✅ getReservationsClient — utilise userId
     public List<ReservationResponse> getReservationsClient(UUID userId) {
         Client client = clientRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
@@ -200,7 +199,6 @@ public class ReservationService {
                 .toList();
     }
 
-    // ✅ getReservationsCoiffeur — utilise userId
     public List<ReservationResponse> getReservationsCoiffeur(UUID userId) {
         Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
@@ -235,11 +233,9 @@ public class ReservationService {
     }
 
     public List<SlotResponse> getConfirmedSlots(UUID coiffeurId) {
-
         Coiffeur coiffeur = coiffeurRepository.findByUserId(coiffeurId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        // Retourner les réservations CONFIRMED dans le futur uniquement
         List<Reservation> confirmed = reservationRepository
                 .findByCoiffeurIdAndStatusAndStartTimeAfter(
                         coiffeur.getId(),
@@ -250,5 +246,59 @@ public class ReservationService {
         return confirmed.stream()
                 .map(r -> new SlotResponse(r.getStartTime(), r.getEndTime()))
                 .toList();
+    }
+
+    public ReservationResponse annulerReservation(UUID reservationId, UUID userId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
+
+        Client client = clientRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé"));
+
+        if (!reservation.getClient().getId().equals(client.getId())) {
+            throw new RuntimeException("Cette réservation ne vous appartient pas");
+        }
+
+        if (!reservation.getStatus().equals("PENDING")) {
+            throw new RuntimeException("Vous ne pouvez annuler qu'une réservation en attente");
+        }
+
+        reservation.setStatus("CANCELLED");
+        reservationRepository.save(reservation);
+
+        notificationService.envoyerNotification(
+                reservation.getCoiffeur().getUser().getId(),
+                "Réservation annulée",
+                "Le client " + client.getUser().getName() + " a annulé sa réservation.",
+                reservation.getId(),
+                "RESERVATION"
+        );
+
+        return mapToResponse(reservation);
+    }
+
+    public void supprimerReservation(UUID reservationId, UUID userId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new RuntimeException("Réservation non trouvée"));
+
+        boolean isClient = clientRepository.findByUserId(userId)
+                .map(c -> c.getId().equals(reservation.getClient().getId()))
+                .orElse(false);
+
+        boolean isCoiffeur = coiffeurRepository.findByUserId(userId)
+                .map(c -> c.getId().equals(reservation.getCoiffeur().getId()))
+                .orElse(false);
+
+        if (!isClient && !isCoiffeur) {
+            throw new RuntimeException("Vous n'avez pas le droit de supprimer cette réservation");
+        }
+
+        // ✅ REJECTED ne peut pas être supprimée
+        List<String> passeStatuses = List.of("COMPLETED", "CANCELLED");
+        if (!passeStatuses.contains(reservation.getStatus())) {
+            throw new RuntimeException("Vous ne pouvez supprimer qu'une réservation passée");
+        }
+
+        reservationRepository.delete(reservation);
     }
 }

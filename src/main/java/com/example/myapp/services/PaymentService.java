@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -51,8 +52,22 @@ public class PaymentService {
         }
 
         // 5. Vérifier qu'il n'y a pas déjà un paiement
-        if (paymentRepository.findByReservationId(reservation.getId()).isPresent()) {
-            throw new RuntimeException("Un paiement existe déjà pour cette réservation");
+        // Vérifier s'il existe déjà un paiement PENDING
+        Optional<Payment> existingPayment = paymentRepository.findByReservationId(reservation.getId());
+        if (existingPayment.isPresent()) {
+            Payment payment = existingPayment.get();
+            if (payment.getStatus().equals("PENDING")) {
+                // Réutiliser le PaymentIntent existant
+                PaymentIntent existingIntent = stripeService.recupererPaymentIntent(payment.getTransactionId());
+                return new PaymentIntentResponse(
+                        existingIntent.getClientSecret(),
+                        existingIntent.getId(),
+                        payment.getAmount(),
+                        request.currency()
+                );
+            } else {
+                throw new RuntimeException("Un paiement existe déjà pour cette réservation");
+            }
         }
 
         Double montant = reservation.getServices()

@@ -41,4 +41,11 @@ public class ClientController {
         ProfileResponse profile = clientService.updateClientProfile(userId, request, file);
         return ResponseEntity.ok(new GlobalResponse<>(profile));
     }
+
+    @GetMapping("/{userId}/public")
+    public ResponseEntity<GlobalResponse<ProfileResponse>> getClientPublicProfile(
+            @PathVariable UUID userId) {
+        ProfileResponse profile = clientService.getClientPublicProfile(userId);
+        return ResponseEntity.ok(new GlobalResponse<>(profile));
+    }
 }

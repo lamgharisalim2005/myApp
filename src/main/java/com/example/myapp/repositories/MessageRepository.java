@@ -38,4 +38,12 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
             @Param("user1") UUID user1,
             @Param("user2") UUID user2
     );
+
+    @Query("SELECT COUNT(m) FROM Message m WHERE " +
+            "m.senderId = :partnerId AND m.receiverId = :userId " +
+            "AND m.status != 'READ'")
+    int countUnreadMessages(
+            @Param("userId") UUID userId,
+            @Param("partnerId") UUID partnerId
+    );
 }

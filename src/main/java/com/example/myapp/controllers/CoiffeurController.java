@@ -93,4 +93,11 @@ public class CoiffeurController {
         coiffeurService.quitterSalon(userId);
         return ResponseEntity.ok(new GlobalResponse<>("Vous avez quitté le salon avec succès"));
     }
+
+    @GetMapping("/{userId}/public")
+    public ResponseEntity<GlobalResponse<ProfileResponse>> getCoiffeurPublicProfile(
+            @PathVariable UUID userId) {
+        ProfileResponse profile = coiffeurService.getCoiffeurPublicProfile(userId);
+        return ResponseEntity.ok(new GlobalResponse<>(profile));
+    }
 }

@@ -7,6 +7,7 @@ public record ProfileResponse(
         String name,
         String email,
         String profilePicture,
-        String role
+        String role,
+        boolean isAdmin
 ) {
 }

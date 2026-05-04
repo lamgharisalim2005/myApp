@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @ControllerAdvice
@@ -53,6 +54,14 @@ public class ExceptionController {
         }
 
         // 400 — Mauvaise requête
+        return new ResponseEntity<>(new GlobalResponse<>(errors), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<GlobalResponse<String>> gereDateTimeParseException(DateTimeParseException e) {
+        List<GlobalResponse.ErrorItem> errors = List.of(
+                new GlobalResponse.ErrorItem(e.getMessage())
+        );
         return new ResponseEntity<>(new GlobalResponse<>(errors), HttpStatus.BAD_REQUEST);
     }
 }

@@ -48,6 +48,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/messages/**").hasAnyRole("CLIENT", "COIFFEUR")
                         .requestMatchers("/api/notifications/**").hasAnyRole("CLIENT", "COIFFEUR")
                         .requestMatchers(HttpMethod.GET, "/api/messages/online/*").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/reservations/*").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/clients/*/public").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/coiffeurs/*/public").hasAnyRole("CLIENT", "COIFFEUR")
+                        .requestMatchers("/api/blocks/**").hasAnyRole("CLIENT", "COIFFEUR")
 
                         // Webhook Stripe
                         .requestMatchers("/api/payments/webhook").permitAll()
@@ -57,6 +61,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/reservations").hasAnyRole("CLIENT")
                         .requestMatchers("/api/payments/intent").hasAnyRole("CLIENT")
                         .requestMatchers(HttpMethod.GET, "/api/reservations/coiffeur/*/slots").hasRole("CLIENT")
+                        // CLIENT — Annuler et voir ses réservations
+                        .requestMatchers(HttpMethod.GET, "/api/reservations/client").hasAnyRole("CLIENT")
+                        .requestMatchers(HttpMethod.PUT, "/api/reservations/*/cancel").hasAnyRole("CLIENT")
+
 
                         // ========== ENDPOINTS COIFFEUR UNIQUEMENT ==========
                         .requestMatchers("/api/services/**").hasAnyRole("COIFFEUR")
@@ -71,7 +79,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/coiffeurs/*/photos").hasAnyRole("COIFFEUR")
                         .requestMatchers(HttpMethod.DELETE, "/api/coiffeurs/**").hasAnyRole("COIFFEUR")
                         .requestMatchers(HttpMethod.PUT, "/api/coiffeurs/*/quitter-salon").hasAnyRole("COIFFEUR")
-                        .requestMatchers(HttpMethod.PUT, "/api/reservations/*").hasAnyRole("COIFFEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/reservations/coiffeur").hasAnyRole("COIFFEUR")
 
 
                         // ========== TOUT LE RESTE NÉCESSITE AUTH ==========

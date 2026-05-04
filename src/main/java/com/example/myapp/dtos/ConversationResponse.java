@@ -9,6 +9,7 @@ public record ConversationResponse(
         String userType,
         String lastMessage,
         LocalDateTime lastMessageTime,
-        String profilePicture
+        String profilePicture,
+        int unreadCount
 ) {
 }

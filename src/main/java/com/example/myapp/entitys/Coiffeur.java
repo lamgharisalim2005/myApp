@@ -30,7 +30,7 @@ public class Coiffeur {
     private User user;
 
     // Spécifique au coiffeur — est-il admin de son salon ?
-    @Column(nullable = false)
+    @Column(name = "is_admin", nullable = false)
     private boolean isAdmin = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
