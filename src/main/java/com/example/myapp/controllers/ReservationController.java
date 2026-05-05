@@ -68,8 +68,10 @@ public class ReservationController {
     // CLIENT — Voir les créneaux CONFIRMÉS futurs d'un coiffeur
     @GetMapping("/coiffeur/{coiffeurId}/slots")
     public ResponseEntity<GlobalResponse<List<SlotResponse>>> getConfirmedSlots(
-            @PathVariable UUID coiffeurId) {
-        List<SlotResponse> slots = reservationService.getConfirmedSlots(coiffeurId);
+            @PathVariable UUID coiffeurId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
+        List<SlotResponse> slots = reservationService.getConfirmedSlots(coiffeurId, userId);
         return ResponseEntity.ok(new GlobalResponse<>(slots));
     }
 

@@ -142,12 +142,15 @@ public class PaymentService {
 
 
         } else {
-            payment.setStatus("FAILED");
-            paymentRepository.save(payment);
+            // Paiement échoué → supprimer le payment PENDING
+            // pour permettre au client de réessayer
+            paymentRepository.delete(payment);
 
-            // ✅ Notifier le client en cas d'échec
+            // La réservation reste en WAITING_PAYMENT
+            // Le client peut réessayer de payer
+
             notificationService.envoyerNotification(
-                    reservation.getClient().getUser().getId(), // ← via User
+                    reservation.getClient().getUser().getId(),
                     "Paiement échoué",
                     "Votre paiement pour " + nomsServices +
                             " a échoué. Veuillez réessayer.",

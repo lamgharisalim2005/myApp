@@ -4,8 +4,6 @@ import com.example.myapp.configs.WebSocketEventListener;
 import com.example.myapp.dtos.ConversationResponse;
 import com.example.myapp.dtos.MessageResponse;
 import com.example.myapp.dtos.SendMessageRequest;
-import com.example.myapp.entitys.Client;
-import com.example.myapp.entitys.Coiffeur;
 import com.example.myapp.entitys.Message;
 import com.example.myapp.entitys.User;
 import com.example.myapp.repositories.*;
@@ -29,58 +27,45 @@ public class MessageService {
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
 
-    // ✅ Envoyer un message — userId extrait du JWT
+    // Envoyer un message
     public MessageResponse envoyerMessage(SendMessageRequest request, UUID userId) {
 
-        // 1. Vérifier que l'expéditeur existe
         Optional<User> sender = userRepository.findById(userId);
         if (sender.isEmpty())
             throw new RuntimeException("sender non trouvé");
 
-        // 2. Vérifier que le destinataire existe
-        Optional<User> reciever = userRepository.findById(request.receiverId());
-        if (reciever.isEmpty()) {
-            throw new RuntimeException("reciever non trouvé");
-        }
+        Optional<User> receiver = userRepository.findById(request.receiverId());
+        if (receiver.isEmpty())
+            throw new RuntimeException("receiver non trouvé");
 
-        // 3. Vérifier que l'expéditeur ne s'envoie pas un message à lui-même
-        if (sender.get().getId().equals(reciever.get().getId())) {
+        if (sender.get().getId().equals(receiver.get().getId()))
             throw new RuntimeException("Vous ne pouvez pas vous envoyer un message à vous-même");
-        }
 
-        // 4. Vérifier que le contenu n'est pas vide
-        if (request.content() == null || request.content().trim().isEmpty()) {
+        if (request.content() == null || request.content().trim().isEmpty())
             throw new RuntimeException("Le contenu du message ne peut pas être vide");
-        }
 
-        // Vérifier si l'expéditeur est bloqué par le destinataire
-        if (blockRepository.existsByBlockerIdAndBlockedId(request.receiverId(), userId)) {
+        if (blockRepository.existsByBlockerIdAndBlockedId(request.receiverId(), userId))
             throw new RuntimeException("Vous ne pouvez pas envoyer de message à cet utilisateur");
-        }
 
-        // 5. Sauvegarder le message avec statut SENT
         Message message = new Message();
         message.setSenderId(sender.get().getId());
         message.setSenderType(sender.get().getRole());
-        message.setReceiverId(reciever.get().getId());
-        message.setReceiverType(reciever.get().getRole());
+        message.setReceiverId(receiver.get().getId());
+        message.setReceiverType(receiver.get().getRole());
         message.setContent(request.content());
         message.setCreatedAt(LocalDateTime.now());
         message.setStatus("SENT");
         Message saved = messageRepository.save(message);
 
-        // 6. Vérifier si le destinataire est en ligne
         boolean receiverOnline = WebSocketEventListener.onlineUsers
                 .containsKey(request.receiverId());
 
-        // 7. Si destinataire en ligne → DELIVERED, sinon → SENT
         String finalStatus = receiverOnline ? "DELIVERED" : "SENT";
         if (receiverOnline) {
             saved.setStatus("DELIVERED");
             messageRepository.save(saved);
         }
 
-        // 8. Envoyer via WebSocket au destinataire
         messagingTemplate.convertAndSend(
                 "/queue/messages/" + request.receiverId(),
                 new MessageResponse(
@@ -97,7 +82,6 @@ public class MessageService {
                 )
         );
 
-        // 9. Notifier l'expéditeur du statut final
         messagingTemplate.convertAndSend(
                 "/queue/messages/" + userId,
                 new MessageResponse(
@@ -114,7 +98,6 @@ public class MessageService {
                 )
         );
 
-        // 10. Retourner la réponse à l'expéditeur
         return new MessageResponse(
                 saved.getId(),
                 saved.getSenderId(),
@@ -129,13 +112,10 @@ public class MessageService {
         );
     }
 
-    // ✅ Voir une conversation — userId extrait du JWT
+    // Voir une conversation
     public List<MessageResponse> getConversation(UUID userId, UUID otherUserId) {
-
-        // Vérifier que les deux utilisateurs sont différents
-        if (userId.equals(otherUserId)) {
+        if (userId.equals(otherUserId))
             throw new RuntimeException("Vous ne pouvez pas avoir une conversation avec vous-même");
-        }
 
         return messageRepository.findConversation(userId, otherUserId)
                 .stream()
@@ -154,28 +134,20 @@ public class MessageService {
                 .toList();
     }
 
-    // ✅ Marquer un message comme lu — userId extrait du JWT
+    // Marquer un message comme lu
     public void marquerCommeLu(UUID messageId, UUID userId) {
-
-        // 1. Vérifier que le message existe
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message non trouvé"));
 
-        // 2. Vérifier que c'est bien le destinataire
-        if (!message.getReceiverId().equals(userId)) {
+        if (!message.getReceiverId().equals(userId))
             throw new RuntimeException("Vous n'êtes pas le destinataire de ce message");
-        }
 
-        // 3. Vérifier que le message n'est pas déjà lu
-        if (message.getStatus().equals("READ")) {
+        if (message.getStatus().equals("READ"))
             throw new RuntimeException("Ce message est déjà marqué comme lu");
-        }
 
-        // 4. Marquer comme lu
         message.setStatus("READ");
         messageRepository.save(message);
 
-        // 5. Notifier l'expéditeur via WebSocket
         messagingTemplate.convertAndSend(
                 "/queue/messages/" + message.getSenderId(),
                 new MessageResponse(
@@ -193,9 +165,14 @@ public class MessageService {
         );
     }
 
-    // ✅ Voir toutes les conversations — unifié pour CLIENT et COIFFEUR
+    // Voir toutes les conversations — fix coiffeur ↔ coiffeur
     public List<ConversationResponse> getConversations(UUID userId) {
         List<UUID> partnerIds = messageRepository.findConversationPartners(userId);
+
+        // Récupérer le role de l'utilisateur connecté
+        String myRole = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"))
+                .getRole();
 
         return partnerIds.stream()
                 .map(partnerId -> {
@@ -203,32 +180,58 @@ public class MessageService {
                             .findLastMessage(userId, partnerId)
                             .orElse(null);
 
+                    // Si pas de message visible → conversation supprimée → on cache
                     if (lastMessage == null) return null;
 
-                    String partnerName = userRepository.findById(partnerId).get().getName();
-                    String partnerType;
+                    User partner = userRepository.findById(partnerId)
+                            .orElse(null);
+                    if (partner == null) return null;
 
-                    if (userRepository.findById(userId).get().getRole().equals("CLIENT")) {
-                        partnerType = "COIFFEUR";
-                        partnerName = userRepository.findById(partnerId).get().getName();
-                    } else {
-                        partnerType = "CLIENT";
-                        partnerName = userRepository.findById(partnerId).get().getName();
-                    }
+                    // Fix : on prend le vrai role du partenaire
+                    String partnerType = partner.getRole();
 
                     int unreadCount = messageRepository.countUnreadMessages(userId, partnerId);
 
                     return new ConversationResponse(
                             partnerId,
-                            partnerName,
+                            partner.getName(),
                             partnerType,
                             lastMessage.getContent(),
                             lastMessage.getCreatedAt(),
-                            userRepository.findById(partnerId).get().getProfilePicture(),
+                            partner.getProfilePicture(),
                             unreadCount
                     );
                 })
                 .filter(c -> c != null)
                 .toList();
+    }
+
+    // Supprimer une conversation — uniquement de mon côté
+    public void supprimerConversation(UUID userId, UUID partnerId) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Marquer comme supprimé côté sender (mes messages envoyés)
+        messageRepository.deleteConversationAsSender(userId, partnerId, now);
+
+        // Marquer comme supprimé côté receiver (messages reçus)
+        messageRepository.deleteConversationAsReceiver(userId, partnerId, now);
+    }
+
+    // Supprimer un message individuel — uniquement de mon côté
+    public void supprimerMessage(UUID messageId, UUID userId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message non trouvé"));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (message.getSenderId().equals(userId)) {
+            // Tu es l'expéditeur
+            messageRepository.deleteMessageAsSender(messageId, userId, now);
+        } else if (message.getReceiverId().equals(userId)) {
+            // Tu es le destinataire
+            messageRepository.deleteMessageAsReceiver(messageId, userId, now);
+        } else {
+            throw new RuntimeException("Vous n'êtes pas autorisé à supprimer ce message");
+        }
     }
 }

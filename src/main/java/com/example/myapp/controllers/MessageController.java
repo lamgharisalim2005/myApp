@@ -88,5 +88,25 @@ public class MessageController {
         return ResponseEntity.ok(new GlobalResponse<>(online));
     }
 
+    // CLIENT ET COIFFEUR — Supprimer une conversation de son côté uniquement
+    @DeleteMapping("/conversation/{partnerId}")
+    public ResponseEntity<GlobalResponse<String>> supprimerConversation(
+            @PathVariable UUID partnerId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
+        messageService.supprimerConversation(userId, partnerId);
+        return ResponseEntity.ok(new GlobalResponse<>("Conversation supprimée"));
+    }
+
+    // CLIENT ET COIFFEUR — Supprimer un message individuel de son côté uniquement
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<GlobalResponse<String>> supprimerMessage(
+            @PathVariable UUID messageId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
+        messageService.supprimerMessage(messageId, userId);
+        return ResponseEntity.ok(new GlobalResponse<>("Message supprimé"));
+    }
+
 
 }

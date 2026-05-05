@@ -38,11 +38,26 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     List<Reservation> findByCoiffeurIdAndStatusAndStartTimeAfter(UUID id, String confirmed, LocalDateTime now);
 
     @Query("SELECT COUNT(r) > 0 FROM Reservation r WHERE r.client.id = :clientId " +
-            "AND r.status IN ('PENDING', 'CONFIRMED', 'WAITING_PAYMENT', 'REJECTED') " +
+            "AND r.status IN ('PENDING', 'CONFIRMED', 'WAITING_PAYMENT') " +
             "AND r.startTime < :endTime AND r.endTime > :startTime")
     boolean existsClientConflict(
             @Param("clientId") UUID clientId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime
+    );
+
+    // Slots occupés pour tout le monde (CONFIRMED + WAITING_PAYMENT)
+    List<Reservation> findByCoiffeurIdAndStatusInAndStartTimeAfter(
+            UUID coiffeurId,
+            List<String> statuses,
+            LocalDateTime startTime
+    );
+
+    // Slots occupés uniquement pour ce client (PENDING + REJECTED)
+    List<Reservation> findByCoiffeurIdAndClientIdAndStatusInAndStartTimeAfter(
+            UUID coiffeurId,
+            UUID clientId,
+            List<String> statuses,
+            LocalDateTime startTime
     );
 }

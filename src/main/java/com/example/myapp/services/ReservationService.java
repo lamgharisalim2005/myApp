@@ -232,20 +232,40 @@ public class ReservationService {
         );
     }
 
-    public List<SlotResponse> getConfirmedSlots(UUID coiffeurId) {
+    public List<SlotResponse> getConfirmedSlots(UUID coiffeurId, UUID userId) {
         Coiffeur coiffeur = coiffeurRepository.findByUserId(coiffeurId)
                 .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
 
-        List<Reservation> confirmed = reservationRepository
-                .findByCoiffeurIdAndStatusAndStartTimeAfter(
+        // 1. Slots occupés pour tout le monde (CONFIRMED + WAITING_PAYMENT)
+        List<Reservation> confirmedSlots = reservationRepository
+                .findByCoiffeurIdAndStatusInAndStartTimeAfter(
                         coiffeur.getId(),
-                        "CONFIRMED",
+                        List.of("CONFIRMED", "WAITING_PAYMENT"),
                         LocalDateTime.now()
                 );
 
-        return confirmed.stream()
-                .map(r -> new SlotResponse(r.getStartTime(), r.getEndTime()))
-                .toList();
+        // 2. Slots occupés uniquement pour ce client (PENDING + REJECTED)
+        Client client = clientRepository.findByUserId(userId).orElse(null);
+
+        List<Reservation> clientSlots = new java.util.ArrayList<>();
+        if (client != null) {
+            clientSlots = reservationRepository
+                    .findByCoiffeurIdAndClientIdAndStatusInAndStartTimeAfter(
+                            coiffeur.getId(),
+                            client.getId(),
+                            List.of("PENDING", "REJECTED"),
+                            LocalDateTime.now()
+                    );
+        }
+
+        // 3. Combiner les deux listes
+        List<SlotResponse> result = new java.util.ArrayList<>();
+        confirmedSlots.forEach(r ->
+                result.add(new SlotResponse(r.getStartTime(), r.getEndTime())));
+        clientSlots.forEach(r ->
+                result.add(new SlotResponse(r.getStartTime(), r.getEndTime())));
+
+        return result;
     }
 
     public ReservationResponse annulerReservation(UUID reservationId, UUID userId) {

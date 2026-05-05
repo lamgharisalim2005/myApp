@@ -42,5 +42,11 @@ public class Message {
     @Column(nullable = false)
     private String receiverType;
 
+    // Suppression côté sender (null = pas supprimé)
+    @Column
+    private LocalDateTime deletedBySenderAt;
 
+    // Suppression côté receiver (null = pas supprimé)
+    @Column
+    private LocalDateTime deletedByReceiverAt;
 }
