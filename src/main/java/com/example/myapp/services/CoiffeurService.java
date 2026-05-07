@@ -74,6 +74,12 @@ public class CoiffeurService {
             throw new RuntimeException("Vous avez déjà une demande en cours pour ce salon");
         }
 
+        // Vérifier que le coiffeur n'est pas déjà membre de ce salon
+        if (coiffeur.getSalon() != null &&
+                coiffeur.getSalon().getId().equals(request.salonId())) {
+            throw new RuntimeException("Vous êtes déjà membre de ce salon");
+        }
+
         Salon salon = salonRepository.findById(request.salonId())
                 .orElseThrow(() -> new RuntimeException("Salon non trouvé"));
 
@@ -99,7 +105,9 @@ public class CoiffeurService {
                 saved.getId(),
                 saved.getStatus(),
                 coiffeur.getUser().getName(),
-                salon.getName()
+                salon.getName(),
+                saved.getCreatedAt()
+
         );
     }
 
@@ -122,7 +130,8 @@ public class CoiffeurService {
                         demande.getId(),
                         demande.getStatus(),
                         demande.getCoiffeur().getUser().getName(),
-                        demande.getSalon().getName()
+                        demande.getSalon().getName(),
+                        demande.getCreatedAt()
                 ))
                 .toList();
     }
@@ -190,7 +199,8 @@ public class CoiffeurService {
                 demande.getId(),
                 demande.getStatus(),
                 demande.getCoiffeur().getUser().getName(),
-                demande.getSalon().getName()
+                demande.getSalon().getName(),
+                demande.getCreatedAt()
         );
     }
 
@@ -692,7 +702,8 @@ public class CoiffeurService {
                         demande.getId(),
                         demande.getStatus(),
                         demande.getCoiffeur().getUser().getName(),
-                        demande.getSalon().getName()
+                        demande.getSalon().getName(),
+                        demande.getCreatedAt()
                 ))
                 .toList();
     }
@@ -708,5 +719,24 @@ public class CoiffeurService {
                 "COIFFEUR",
                 coiffeur.isAdmin()
         );
+    }
+
+    // COIFFEUR — Annuler une demande PENDING
+    public void annulerDemande(UUID demandeId, UUID userId) {
+        SalonRequest demande = salonRequestRepository.findById(demandeId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+
+        Coiffeur coiffeur = coiffeurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Coiffeur non trouvé"));
+
+        if (!demande.getCoiffeur().getId().equals(coiffeur.getId())) {
+            throw new RuntimeException("Cette demande ne vous appartient pas");
+        }
+
+        if (!demande.getStatus().equals("PENDING")) {
+            throw new RuntimeException("Vous ne pouvez annuler qu'une demande en attente");
+        }
+
+        salonRequestRepository.delete(demande);
     }
 }

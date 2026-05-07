@@ -20,9 +20,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
     // Toutes les réservations d'un coiffeur
     List<Reservation> findByCoiffeurId(UUID coiffeurId);
 
-    // Vérifie si un coiffeur a déjà une réservation qui chevauche le créneau
     @Query("SELECT COUNT(r) > 0 FROM Reservation r WHERE r.coiffeur.id = :coiffeurId " +
-            "AND r.status != 'CANCELLED' " +
+            "AND r.status IN ('CONFIRMED', 'WAITING_PAYMENT') " +
             "AND r.startTime < :endTime AND r.endTime > :startTime")
     boolean existsConflict(
             @Param("coiffeurId") UUID coiffeurId,
@@ -59,5 +58,20 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
             UUID clientId,
             List<String> statuses,
             LocalDateTime startTime
+    );
+
+    // Trouver toutes les réservations PENDING qui chevauchent un créneau
+// sauf la réservation confirmée elle-même
+    @Query("SELECT r FROM Reservation r WHERE " +
+            "r.coiffeur.id = :coiffeurId " +
+            "AND r.id != :excludeId " +
+            "AND r.status = 'PENDING' " +
+            "AND r.startTime < :endTime " +
+            "AND r.endTime > :startTime")
+    List<Reservation> findConflictingPendingReservations(
+            @Param("coiffeurId") UUID coiffeurId,
+            @Param("excludeId") UUID excludeId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
     );
 }

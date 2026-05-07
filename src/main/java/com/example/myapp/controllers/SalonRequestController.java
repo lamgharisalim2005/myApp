@@ -63,4 +63,14 @@ public class SalonRequestController {
         SalonRequestResponse response = coiffeurService.traiterDemande(demandeId, status, userId);
         return ResponseEntity.ok(new GlobalResponse<>(response));
     }
+
+    // COIFFEUR — Annuler une demande PENDING
+    @DeleteMapping("/{demandeId}")
+    public ResponseEntity<GlobalResponse<String>> annulerDemande(
+            @PathVariable UUID demandeId,
+            HttpServletRequest httpRequest) {
+        UUID userId = (UUID) httpRequest.getAttribute("userId");
+        coiffeurService.annulerDemande(demandeId, userId);
+        return ResponseEntity.ok(new GlobalResponse<>("Demande annulée avec succès"));
+    }
 }

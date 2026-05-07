@@ -136,6 +136,34 @@ public class ReservationService {
             reservation.setStatus("WAITING_PAYMENT");
             reservationRepository.save(reservation);
 
+            // Supprimer toutes les autres réservations PENDING qui chevauchent ce créneau
+            List<Reservation> autresReservations = reservationRepository
+                    .findConflictingPendingReservations(
+                            coiffeur.getId(),
+                            reservation.getId(),
+                            reservation.getStartTime(),
+                            reservation.getEndTime()
+                    );
+
+            for (Reservation autre : autresReservations) {
+                String nomsServicesAutre = autre.getServices()
+                        .stream()
+                        .map(com.example.myapp.entitys.Service::getName)
+                        .collect(Collectors.joining(", "));
+
+                // Notifier le client que sa réservation est annulée
+                notificationService.envoyerNotification(
+                        autre.getClient().getUser().getId(),
+                        "Réservation annulée",
+                        "Votre réservation pour " + nomsServicesAutre +
+                                " a été annulée car un autre client a été confirmé sur ce créneau.",
+                        autre.getId(),
+                        "RESERVATION"
+                );
+
+                reservationRepository.delete(autre);
+            }
+
             notificationService.envoyerNotification(
                     reservation.getClient().getUser().getId(),
                     "Réservation confirmée",
