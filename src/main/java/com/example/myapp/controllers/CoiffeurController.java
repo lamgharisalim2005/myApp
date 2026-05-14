@@ -100,4 +100,6 @@ public class CoiffeurController {
         ProfileResponse profile = coiffeurService.getCoiffeurPublicProfile(userId);
         return ResponseEntity.ok(new GlobalResponse<>(profile));
     }
+
+    
 }

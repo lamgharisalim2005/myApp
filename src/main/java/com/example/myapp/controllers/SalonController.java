@@ -119,4 +119,6 @@ public class SalonController {
         coiffeurService.supprimerPhotoSalon(photoId, userId);
         return ResponseEntity.noContent().build();
     }
+
+    
 }

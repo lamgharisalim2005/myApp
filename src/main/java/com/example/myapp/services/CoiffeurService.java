@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -24,6 +25,7 @@ public class CoiffeurService {
     private final CloudinaryService cloudinaryService;
     private final CoiffeurPhotoRepository coiffeurPhotoRepository;
     private final SalonPhotoRepository salonPhotoRepository;
+    private final ReservationServiceRepository reservationServiceRepository;
 
     // COIFFEUR — Créer un salon
     public SalonResponse creerSalon(CreateSalonRequest createSalonRequest, UUID userId) {
@@ -264,7 +266,7 @@ public class CoiffeurService {
         if (!service.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Ce service ne vous appartient pas");
         }
-
+        reservationServiceRepository.deleteByServiceId(id);
         serviceRepository.delete(service);
     }
 
@@ -451,7 +453,7 @@ public class CoiffeurService {
         if (!photo.getCoiffeur().getId().equals(coiffeur.getId())) {
             throw new RuntimeException("Cette photo ne vous appartient pas");
         }
-
+        cloudinaryService.supprimerPhoto(photo.getUrl());
         coiffeurPhotoRepository.delete(photo);
     }
 
@@ -508,7 +510,7 @@ public class CoiffeurService {
         if (!coiffeur.getSalon().getId().equals(photo.getSalon().getId())) {
             throw new RuntimeException("Cette photo n'appartient pas à votre salon");
         }
-
+        cloudinaryService.supprimerPhoto(photo.getUrl());
         salonPhotoRepository.delete(photo);
     }
 
@@ -739,4 +741,6 @@ public class CoiffeurService {
 
         salonRequestRepository.delete(demande);
     }
+
 }
+

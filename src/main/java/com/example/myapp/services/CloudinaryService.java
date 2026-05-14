@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Map;
 
 @Service
@@ -31,8 +32,20 @@ public class CloudinaryService {
         }
     }
 
+
     public void supprimerPhoto(String url) {
-        // TODO: Supprimer de Cloudinary quand le problème de timestamp sera résolu
-        // Pour l'instant on supprime juste de la base de données
+        try {
+            // Extraire le public_id depuis l'URL
+            String publicId = url
+                    .replaceAll("https://res.cloudinary.com/[^/]+/image/upload/v[0-9]+/", "")
+                    .replaceAll("\\.[^.]+$", ""); // supprimer l'extension
+
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur suppression Cloudinary");
+        }
     }
+
+
 }
